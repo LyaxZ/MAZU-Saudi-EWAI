@@ -1,0 +1,55 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.egg-info/
+dist/
+build/
+*.egg
+.eggs/
+
+# Virtual environments
+venv/
+.venv/
+env/
+
+# IDE
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+.idea/
+*.swp
+*.swo
+
+# Jupyter
+.ipynb_checkpoints/
+*.ipynb_checkpoints
+
+# OS
+.DS_Store
+Thumbs.db
+
+# 输出产物
+outputs/models/*
+outputs/logs/*
+!outputs/models/.gitkeep
+!outputs/logs/.gitkeep
+
+# 原始数据（太大，不提交）
+indicators/
+
+# 项目文档（不提交）
+mazu_saudi_project_plan.md
+saudi_extreme_event_indicator_report.md
+PROJECT_STRUCTURE.md
+
+# Agent 操作记录（不提交）
+AGENTS.md
+
+# 环境变量
+.env
+.env.local
+
+# conda
+.pixi/
