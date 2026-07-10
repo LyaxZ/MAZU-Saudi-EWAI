@@ -46,6 +46,7 @@ PROJECT_STRUCTURE.md
 
 # Agent 操作记录（不提交）
 AGENTS.md
+.instructions.md
 
 # 环境变量
 .env
