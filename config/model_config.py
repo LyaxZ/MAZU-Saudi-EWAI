@@ -87,7 +87,7 @@ LIGHTGBM_PARAMS = {
     "num_leaves": 63,
     "max_depth": 7,
     "learning_rate": 0.05,
-    "n_estimators": 300,
+    "n_estimators": 150,
     "subsample": 0.8,
     "colsample_bytree": 0.8,
     "reg_alpha": 0.1,
