@@ -53,6 +53,20 @@ def _get_file_list(
     return files
 
 
+def _drop_scalar_coords(ds: xr.Dataset) -> None:
+    """原地删除所有 0 维标量坐标，防止 to_dataframe() 报错。
+
+    NetCDF 文件中的 step, surface, atmosphere 等标量坐标对分析无用，
+    且会阻塞 xarray 的 MultiIndex 构建。
+    """
+    to_drop = []
+    for coord_name in ds.coords:
+        if ds.coords[coord_name].ndim == 0:
+            to_drop.append(coord_name)
+    if to_drop:
+        ds.drop_vars(to_drop, errors="ignore")
+
+
 def load_single_day(
     date: str, variables: Optional[List[str]] = None
 ) -> xr.Dataset:
@@ -133,6 +147,10 @@ def load_date_range(
     # 使用 compat='override' + coords='minimal' 处理不同日期文件间
     # 坐标变量不一致的问题（如 atmosphereSingleLayer 等标量坐标）
     merged = xr.concat(datasets, dim="day", compat="override", coords="minimal")
+
+    # 清理 0 维标量坐标（step, surface, atmosphere 等），否则 to_dataframe() 会报错
+    _drop_scalar_coords(merged)
+
     return merged
 
 

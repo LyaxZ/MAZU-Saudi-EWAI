@@ -46,18 +46,37 @@ df = ds.to_dataframe().dropna()
 |---|---|---|---|
 | 暴雨山洪 | `flash_flood_risk` (0/1/2/3) | ✅ 基线已完成 | 吕 |
 | 极端高温 | `heatwave_day_flag` (0/1) | ✅ 可直接使用 | 吕 |
-| 沙尘强风 | 需从 wind10_speed, rh2m, vpd_kpa 等构建 | ❌ 待构建 | 侯 → `data/label_builder.py` |
-| 沿海风浪 | 需从 sst_celsius, wind10_speed, ivt 等构建 | ❌ 待构建 | 侯 |
+| 沙尘强风 | 需从 wind10_speed, rh2m, vpd_kpa 等构建 | ✅ 已构建 | 侯 → `data/label_builder.py` |
+| 沿海风浪 | 需从 sst_celsius, wind10_speed, ivt 等构建 | ✅ 已构建 | 侯 |
 
-### 标签构建方式（侯 参考）
+### 标签构建方式
 
+#### 方案配置: `config/disaster_config.py`
+
+每种灾害支持 3 种构建模式，通过 `DisasterLabelBuilder` 切换：
+
+| 灾害 | simple | standard（默认） | enhanced |
+|---|---|---|---|
+| dust_wind | `wind10 > P95 AND rh < 30%` | `wind10 > P90 AND (rh < 30% OR vpd > P80)` | 综合评分 >= 2 |
+| coastal_wave | coastal AND `wind10 > P90` | coastal AND `wind10 > P85 AND (SST>median OR ivt>P75)` | 综合评分 >= 3 |
+
+使用:
+```python
+from data.label_builder import DisasterLabelBuilder
+builder = DisasterLabelBuilder(dust_mode="simple", coastal_mode="simple")
+builder.fit(df_train)
+labels = builder.build_all(df_test)  # → 4列 0/1 标签
 ```
+
+#### 原有参考
+```
+# flash_flood:  已有 flash_flood_risk，>= 1 → 正样本
 # extreme_heat: 已有 heatwave_day_flag，直接使用
-# dust_wind:     wind10_speed > P95   AND  rh2m < 30%
-# coastal_wave:  沿海格点(sst非NaN)  AND  wind10_speed > P90
+# dust_wind:    wind10_speed > P95   AND  rh2m < 30%   (simple 模式)
+# coastal_wave: 沿海格点(orography<100m) AND  wind10_speed > P90  (simple 模式)
 ```
 
-> 阈值从 91 个变量的全年统计中取分位数，见 `notebooks/01_data_exploration.ipynb` 第 5 节。
+> 阈值从训练数据中 fit 得到，避免数据泄露。沿海格点用 `orography < 100m`（SST 在不同网格不可同时加载）。
 
 ---
 
@@ -113,7 +132,7 @@ compute_all_metrics(y_true, y_pred, y_proba)  # → {CSI, POD, FAR, FBIAS, F1, A
 indicators/*.nc
   → data/loader.py             # xr.Dataset [吕✅]
     → data/preprocessor.py     # 缺失值填补、归一化 [侯待]
-    → data/label_builder.py    # 四类灾害标签 [侯待]
+    → data/label_builder.py    # 四类灾害标签 [侯✅ 2026-07-11]
     → data/splitter.py         # 训练/验证/测试划分 [侯待]
   → features/                  # 时序+空间衍生特征 [侯待]
   → kg/                        # 图特征 [侯待]
@@ -144,15 +163,23 @@ flash_flood_risk                   # 标签（0/1/2/3 → >=1 为正样本）
 | `evaluation/metrics.py` | ✅ | CSI/POD/FAR/FBIAS/F1/AUC |
 | 四灾害基线训练 | ✅ | 见下方结果 |
 
-### 侯（数据）待开始
+### 侯（数据）进行中
 | 项 | 状态 | 说明 |
 |---|---|---|
-| `data/label_builder.py` | ❌ | 四类灾害标签构建 |
+| `data/label_builder.py` | ✅ | 四类灾害标签构建（2026-07-11） |
+| `config/disaster_config.py` | ✅ | 阈值定义、3种模式配置（2026-07-11） |
 | `data/preprocessor.py` | ❌ | 缺失值填补、归一化 |
 | `data/splitter.py` | ❌ | 数据集划分 |
 | `features/` | ❌ | 时序+空间衍生特征 |
 | `kg/` | ❌ | 知识图谱 |
 | `app/` | ❌ | Gradio 界面 |
+
+### 其他修复（2026-07-11）
+| 项 | 说明 |
+|---|---|
+| `config/settings.py` | INDICATORS_DIR 自动检测: `D:\BaiduNetdiskDownload\indicators` |
+| `data/loader.py` | 新增 `_drop_scalar_coords()` 修复 0 维坐标导致 to_dataframe() 崩溃 |
+| `tests/test_label_builder.py` | 全模式全季节标签构建测试 |
 
 ### 四灾害 LightGBM 基线
 | 灾害 | 标签 | 测试CSI | 测试POD | 测试FAR | AUC |
@@ -162,18 +189,19 @@ flash_flood_risk                   # 标签（0/1/2/3 → >=1 为正样本）
 | 沙尘强风 | `wind10 > P95 AND rh2m < 30%` (代理) | 0.947 | 1.000 | 0.053 | 1.000 |
 | 沿海风浪 | `orography < 100m AND wind10 > P90` (代理) | 0.920 | 0.999 | 0.079 | 1.000 |
 
-> 极端高温待侯 `label_builder.py` 改进标签后重训；沙尘/风浪为代理标签，后续升级。
+> 极端高温待侯 `label_builder.py` 改进标签后重训；沙尘/风浪标签已由侯构建完成（2026-07-11），吕可切换使用 `standard` 模式重训基线。
 
 ### 吕 下一步
-1. `models/lstm_model.py` — LSTM 时序特征提取
-2. `evaluation/spatial_cv.py` — 时空交叉验证
-3. `llm_agent/prompt_templates.py` + `safety.py` — LLM 幻觉防控
+1. 使用侯的 `label_builder.py` 更新沙尘/风浪标签，重训基线
+2. `models/lstm_model.py` — LSTM 时序特征提取
+3. `evaluation/spatial_cv.py` — 时空交叉验证
+4. `llm_agent/prompt_templates.py` + `safety.py` — LLM 幻觉防控
 
 ---
 
 ## 8. 关键约定
 
-- **标签**: `flash_flood_risk >= 1` → 1（有风险），其余三类待 B 构建
+- **标签**: `flash_flood_risk >= 1` → 1（有风险）；沙尘/风浪由侯的 `label_builder.py` 构建；极端高温用原生 `heatwave_day_flag`
 - **经纬度必须入模**: sin/cos 编码后加入特征列表
 - **缺失值**: 当前 `.dropna()`，后续由 `data/preprocessor.py` 升级
 - **样本权重**: 自动 `neg/pos` 比例，无需手动传

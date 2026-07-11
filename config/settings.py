@@ -7,7 +7,21 @@ import os
 PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 # ---- 数据路径 ----
-INDICATORS_DIR = os.path.join(PROJECT_ROOT, "indicators")
+INDICATORS_DIR = os.environ.get(
+    "MAZU_INDICATORS_DIR",
+    os.path.join(PROJECT_ROOT, "indicators")
+)
+
+# 如果默认路径不存在，尝试备选路径
+if not os.path.exists(INDICATORS_DIR):
+    _alt_paths = [
+        r"D:\BaiduNetdiskDownload\indicators",
+        r"d:\College\Semester-3\mazu_saudi_ewai\indicators",
+    ]
+    for _p in _alt_paths:
+        if os.path.exists(_p):
+            INDICATORS_DIR = _p
+            break
 OUTPUTS_DIR = os.path.join(PROJECT_ROOT, "outputs")
 MODELS_DIR = os.path.join(OUTPUTS_DIR, "models")
 REPORTS_DIR = os.path.join(OUTPUTS_DIR, "reports")
