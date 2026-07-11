@@ -1,0 +1,180 @@
+# ALIGNMENT — MAZU 沙特多灾种预警对齐文档
+
+> 吕与侯协作开发 · DeepSeek 模型
+
+---
+
+## 1. 环境
+
+| 项 | 值 |
+|---|---|
+| Python | 3.12 (conda `saudi_analysis`) |
+| 核心包 | numpy, pandas, xarray, netCDF4, lightgbm, torch, gradio, networkx |
+| 设备 | CPU（`config/model_config.py` → `DEVICE` 自动检测 GPU） |
+
+---
+
+## 2. 数据
+
+### 来源
+```
+indicators/saudi_indicators_YYYYMMDD.nc  × 365 天（2025全年）
+```
+
+### 规格
+| 项 | 值 |
+|---|---|
+| 变量数 | 91 |
+| 网格 | 160 (lat) × 220 (lon) = 35,200 格点 |
+| 分辨率 | 0.1° (~10 km) |
+| 空间范围 | 16.0°N–32.0°N, 34.0°E–56.0°E |
+
+### 加载
+```python
+from data.loader import load_date_range
+ds = load_date_range("2025-08-01", "2025-08-31",
+                     variables=["daily_precip_total", "t2m_c", "cape"])
+df = ds.to_dataframe().dropna()
+# → cols: [day, latitude, longitude, + 变量列]
+```
+
+---
+
+## 3. 四类灾害覆盖
+
+| 灾害 | 标签来源 | 状态 | 负责人 |
+|---|---|---|---|
+| 暴雨山洪 | `flash_flood_risk` (0/1/2/3) | ✅ 基线已完成 | 吕 |
+| 极端高温 | `heatwave_day_flag` (0/1) | ✅ 可直接使用 | 吕 |
+| 沙尘强风 | 需从 wind10_speed, rh2m, vpd_kpa 等构建 | ❌ 待构建 | 侯 → `data/label_builder.py` |
+| 沿海风浪 | 需从 sst_celsius, wind10_speed, ivt 等构建 | ❌ 待构建 | 侯 |
+
+### 标签构建方式（侯 参考）
+
+```
+# extreme_heat: 已有 heatwave_day_flag，直接使用
+# dust_wind:     wind10_speed > P95   AND  rh2m < 30%
+# coastal_wave:  沿海格点(sst非NaN)  AND  wind10_speed > P90
+```
+
+> 阈值从 91 个变量的全年统计中取分位数，见 `notebooks/01_data_exploration.ipynb` 第 5 节。
+
+---
+
+## 4. 地表/地形/位置信息
+
+### 已用的
+| 变量 | 含义 | 当前是否入模 |
+|---|---|---|
+| `orography` | 海拔高度 (m) | ✅ 在全部四类灾害特征列表中 |
+| `latitude`, `longitude` | 格点坐标 | ⚠️ 目前未显式传入，但 DataFrame 中有 |
+
+### 建议加入的（侯 可在 features/ 实现）
+| 衍生特征 | 含义 | 来源 |
+|---|---|---|
+| `slope` | 地形坡度 | orography 差分 |
+| `dist_to_coast` | 距海岸线距离 | 经纬度 + 海岸线掩码 |
+| `coast_flag` | 是否沿海格点 (0/1) | latitude, longitude |
+| `lat_sin`, `lon_cos` | 经纬度周期编码 | latitude, longitude → sin/cos 变换 |
+| `land_cover` | 地表类型（沙漠/城市/山地/农田） | 外部数据（可选） |
+
+> **经纬度必须入模**：沙漠北部和南部的地表特征完全不同，即使气象指标相同，山洪发生的条件也可能不同。建议将 `latitude`, `longitude` 做 sin/cos 周期编码后作为特征。
+
+---
+
+## 5. 模型接口
+
+### LightGBM（吕 已完成）
+```python
+model = LightGBMDisasterModel("flash_flood")
+model.fit(X_train, y_train)                     # X: pd.DataFrame, y: np.array 0/1
+y_proba = model.predict_proba(X_test)           # → (n_samples,)
+model.get_feature_importance()                  # → pd.DataFrame
+model.save("outputs/models/flash_flood.pkl")
+```
+
+### LSTM（吕 待实现）
+```python
+# 输入: (n_samples, seq_len=7, n_features)
+# 输出: (n_samples, 64) → 拼入 LightGBM 作为额外特征列
+```
+
+### 评估
+```python
+from evaluation.metrics import compute_all_metrics
+compute_all_metrics(y_true, y_pred, y_proba)  # → {CSI, POD, FAR, FBIAS, F1, AUC}
+```
+
+---
+
+## 6. 模块间数据流
+
+```
+indicators/*.nc
+  → data/loader.py             # xr.Dataset [吕✅]
+    → data/preprocessor.py     # 缺失值填补、归一化 [侯待]
+    → data/label_builder.py    # 四类灾害标签 [侯待]
+    → data/splitter.py         # 训练/验证/测试划分 [侯待]
+  → features/                  # 时序+空间衍生特征 [侯待]
+  → kg/                        # 图特征 [侯待]
+→ models/                      # LightGBM/LSTM/Stacking [吕✅基线]
+→ evaluation/                  # 指标评估 [吕✅]
+→ app/                         # Gradio [侯待]
+```
+
+### DataFrame 列名约定
+```
+day, latitude, longitude           # 索引列
+daily_precip_total, cape, t2m_c... # 气象特征
+flash_flood_risk                   # 标签（0/1/2/3 → >=1 为正样本）
+```
+
+---
+
+## 7. 当前进度（2026-07-11）
+
+### 吕（模型）已完成
+| 项 | 状态 | 说明 |
+|---|---|---|
+| `data/loader.py` | ✅ | NetCDF 批量加载 |
+| `config/settings.py` | ✅ | 全局路径、网格参数 |
+| `config/model_config.py` | ✅ | 四类灾害特征列表、超参数 |
+| `models/base_model.py` | ✅ | 统一 fit/predict/save/load |
+| `models/lightgbm_model.py` | ✅ | CPU/GPU 自动检测、样本权重 |
+| `evaluation/metrics.py` | ✅ | CSI/POD/FAR/FBIAS/F1/AUC |
+| 四灾害基线训练 | ✅ | 见下方结果 |
+
+### 侯（数据）待开始
+| 项 | 状态 | 说明 |
+|---|---|---|
+| `data/label_builder.py` | ❌ | 四类灾害标签构建 |
+| `data/preprocessor.py` | ❌ | 缺失值填补、归一化 |
+| `data/splitter.py` | ❌ | 数据集划分 |
+| `features/` | ❌ | 时序+空间衍生特征 |
+| `kg/` | ❌ | 知识图谱 |
+| `app/` | ❌ | Gradio 界面 |
+
+### 四灾害 LightGBM 基线
+| 灾害 | 标签 | 测试CSI | 测试POD | 测试FAR | AUC |
+|---|---|---|---|---|---|
+| 暴雨山洪 | `flash_flood_risk >= 1` | 0.983 | 0.994 | 0.011 | 0.999 |
+| 极端高温 | `heatwave_day_flag` (已有) | 0.283 | 0.477 | 0.589 | 0.922 |
+| 沙尘强风 | `wind10 > P95 AND rh2m < 30%` (代理) | 0.947 | 1.000 | 0.053 | 1.000 |
+| 沿海风浪 | `orography < 100m AND wind10 > P90` (代理) | 0.920 | 0.999 | 0.079 | 1.000 |
+
+> 极端高温待侯 `label_builder.py` 改进标签后重训；沙尘/风浪为代理标签，后续升级。
+
+### 吕 下一步
+1. `models/lstm_model.py` — LSTM 时序特征提取
+2. `evaluation/spatial_cv.py` — 时空交叉验证
+3. `llm_agent/prompt_templates.py` + `safety.py` — LLM 幻觉防控
+
+---
+
+## 8. 关键约定
+
+- **标签**: `flash_flood_risk >= 1` → 1（有风险），其余三类待 B 构建
+- **经纬度必须入模**: sin/cos 编码后加入特征列表
+- **缺失值**: 当前 `.dropna()`，后续由 `data/preprocessor.py` 升级
+- **样本权重**: 自动 `neg/pos` 比例，无需手动传
+- **Git**: 只提交 `.py` `.ipynb`，不上传 `indicators/` `outputs/` `AGENTS.md` `TASK_DIVISION.md` 等
