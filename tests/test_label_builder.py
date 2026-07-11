@@ -1,4 +1,4 @@
-"""
+r"""
 测试脚本：验证 DisasterLabelBuilder 四类灾害标签构建
 
 用法:
@@ -9,8 +9,6 @@
 import sys
 sys.path.insert(0, ".")
 
-import numpy as np
-import pandas as pd
 from data.loader import load_date_range
 from data.label_builder import DisasterLabelBuilder
 

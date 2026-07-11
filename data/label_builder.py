@@ -24,12 +24,9 @@
 
 import numpy as np
 import pandas as pd
-from typing import Dict, List, Optional, Tuple, Union
+from typing import Dict
 
-from config.disaster_config import (
-    DISASTER_LABEL_CONFIGS,
-    get_label_config,
-)
+from config.disaster_config import get_label_config
 
 
 class DisasterLabelBuilder:
@@ -114,13 +111,12 @@ class DisasterLabelBuilder:
             "mode": mode,
         }
 
-        if mode in ("standard", "enhanced"):
+        if mode == "standard":
             # RH 使用绝对值阈值（物理常数：30% 是沙尘扬起的典型门槛）
             self._thresholds["dust_wind"]["rh2m_abs_max"] = thresholds_config.get(
                 "rh2m_absolute_max", 30.0
             )
-
-            p_vpd = thresholds_config["vpd_kpa_percentile"]
+            p_vpd = thresholds_config.get("vpd_kpa_percentile", 80)
             if "vpd_kpa" in df.columns:
                 vpd_vals = df["vpd_kpa"].values
                 vpd_vals = vpd_vals[~np.isnan(vpd_vals)]
@@ -128,6 +124,18 @@ class DisasterLabelBuilder:
 
         if mode == "simple":
             self._thresholds["dust_wind"]["rh2m_abs_max"] = 30.0
+
+        if mode == "enhanced":
+            # RH 和 VPD 都用分位数
+            p_rh = thresholds_config["rh2m_percentile"]
+            rh_vals = df["rh2m"].values
+            rh_vals = rh_vals[~np.isnan(rh_vals)]
+            self._thresholds["dust_wind"]["rh2m_p"] = np.percentile(rh_vals, p_rh)
+
+            p_vpd = thresholds_config["vpd_kpa_percentile"]
+            vpd_vals = df["vpd_kpa"].values
+            vpd_vals = vpd_vals[~np.isnan(vpd_vals)]
+            self._thresholds["dust_wind"]["vpd_kpa_p"] = np.percentile(vpd_vals, p_vpd)
 
         if mode == "enhanced":
             p_shear = thresholds_config["wind_shear_percentile"]
@@ -278,7 +286,7 @@ class DisasterLabelBuilder:
         基于物理推理：强风 + 干燥大气 → 沙尘暴风险。
         支持三种模式：
         - simple:   wind10_speed > P95 AND rh2m < 30%
-        - standard: wind10_speed > P90 AND (rh2m < P20 OR vpd_kpa > P80)
+        - standard: wind10_speed > P90 AND (rh2m < 30% OR vpd_kpa > P80)
         - enhanced: wind + dryness + wind_shear 综合评分 >= 2
 
         Returns:
