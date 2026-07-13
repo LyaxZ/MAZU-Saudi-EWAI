@@ -59,7 +59,16 @@ trainer.fit(X_train, y_train)
 
 ## 开发进度
 
-> 🚧 项目刚刚启动，后续完成的部分将逐步更新至此。
+> 🚧 吕（模型）与侯（数据）合作开发中。
+
+| 灾害 | 模型 | CSI | AUC | 标签 |
+|---|---|---|---|---|
+| 暴雨山洪 | LightGBM | 0.993 | 1.000 | label_builder |
+| 沙尘强风 | LightGBM | 0.961 | 1.000 | label_builder |
+| 沿海风浪 | LightGBM | 0.981 | 1.000 | label_builder |
+| 极端高温 | LightGBM | 0.170* | 0.986 | heatwave_day_flag |
+
+> *10月测试正样本率仅0.7%。全年12月CV CSI=0.932±0.042。LSTM已完成。
 
 ## 技术栈
 

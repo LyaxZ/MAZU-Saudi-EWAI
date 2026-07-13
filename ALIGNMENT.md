@@ -158,76 +158,53 @@ flash_flood_risk                   # 标签（0/1/2/3 → >=1 为正样本）
 
 ---
 
-## 7. 当前进度（2026-07-13）← 更新
+## 7. 当前进度（2026-07-13）
 
 ### 吕（模型）已完成
 | 项 | 状态 | 说明 |
 |---|---|---|
-| `data/loader.py` | ✅ | NetCDF 批量加载 |
-| `config/settings.py` | ✅ | 全局路径、网格参数 |
-| `config/model_config.py` | ✅ | 四类灾害特征列表、超参数 |
-| `models/base_model.py` | ✅ | 统一 fit/predict/save/load |
-| `models/lightgbm_model.py` | ✅ | CPU/GPU 自动检测、样本权重 |
-| `evaluation/metrics.py` | ✅ | CSI/POD/FAR/FBIAS/F1/AUC |
-| 四灾害基线训练 | ✅ | 见下方结果 |
+| 数据加载 | ✅ | `loader.py` + `dataset.py` |
+| LightGBM 基线 | ✅ | 四灾害，label_builder 标签 |
+| LSTM 时序增强 | ✅ | 10万样本，CSI=0.629，AUC=0.981 |
+| 评估体系 | ✅ | CSI/POD/FAR/FBIAS/AUC |
+| 时空交叉验证 | ✅ | 全年12月留一法，CSI=0.932±0.042 |
 
-### 侯（数据+特征+KG）✅ 大部分完成
+### 侯（数据）已完成
 | 项 | 状态 | 说明 |
 |---|---|---|
-| `data/label_builder.py` | ✅ | 四类灾害标签构建（2026-07-11） |
-| `config/disaster_config.py` | ✅ | 阈值定义、3种模式配置（2026-07-11） |
-| `data/preprocessor.py` | ✅ | 缺失值填补(时间/空间/气候态)、归一化(Standard/MinMax)、异常值截断（2026-07-13） |
-| `data/splitter.py` | ✅ | 按日期范围/月份/比例划分、季节划分便捷函数（2026-07-13） |
-| `features/temporal_features.py` | ✅ | N日滑动累计(3/5/7天)、滚动统计、CAPE趋势、连续极端天数、湿度下降率等（2026-07-13） |
-| `features/spatial_features.py` | ✅ | 邻域3×3均值/最大/最小、地形坡度、沿海标识+距离、sin/cos经纬度编码、空间梯度（2026-07-13） |
-| `features/feature_registry.py` | ✅ | 按灾害类型+特征分组查询、消融实验特征集生成（2026-07-13） |
-| `kg/graph_builder.py` | ✅ | NetworkX DiGraph: 35200节点, 279K边, 33842条流向边, 8770沿海节点, D8流向算法（2026-07-13） |
-| `kg/graph_features.py` | ✅ | 下游N跳暴露度BFS、上游汇水面积、沿海距离、图拓扑特征（2026-07-13） |
-| `kg/risk_propagation.py` | ✅ | 四类灾害传播引擎: 山洪下游衰减/沙尘风向扇形/高温暴露汇总/风浪沿海内陆（2026-07-13） |
-| `kg/case_retrieval.py` | ✅ | 余弦相似度检索、合成案例生成、JSON持久化、按灾害类型过滤（2026-07-13） |
-| `app/` | ❌ | Gradio 界面（待实现） |
-| `llm_agent/tools/` | ❌ | LLM 工具定义（待实现） |
+| `data/label_builder.py` | ✅ | 四类灾害标签 fit/transform |
+| `config/disaster_config.py` | ✅ | 阈值定义、3种模式 |
+| `data/preprocessor.py` | ✅ | 缺失值填补、归一化（2026-07-13） |
+| `data/splitter.py` | ✅ | 数据集划分（2026-07-13） |
+| `features/temporal_features.py` | ✅ | 时序滑动窗口特征（2026-07-13） |
+| `features/spatial_features.py` | ✅ | 空间邻域特征（2026-07-13） |
+| `features/feature_registry.py` | ✅ | 特征注册表（2026-07-13） |
+| `kg/graph_builder.py` | ✅ | NetworkX 知识图谱构建（2026-07-13） |
+| `kg/graph_features.py` | ✅ | 图统计特征提取（2026-07-13） |
+| `kg/risk_propagation.py` | ✅ | 风险传播推理（2026-07-13） |
+| `kg/case_retrieval.py` | ✅ | 历史案例检索（2026-07-13） |
 
-### 其他修复
-| 日期 | 项 | 说明 |
-|---|---|---|
-| 2026-07-11 | `config/settings.py` | INDICATORS_DIR 自动检测: `D:\BaiduNetdiskDownload\indicators` |
-| 2026-07-11 | `data/loader.py` | 新增 `_drop_scalar_coords()` 修复 0 维坐标导致 to_dataframe() 崩溃 |
-| 2026-07-11 | `tests/test_label_builder.py` | 全模式全季节标签构建测试 |
-| 2026-07-13 | `data/__init__.py` | 更新导出: preprocessor, splitter |
-| 2026-07-13 | `features/__init__.py` | 更新导出: temporal, spatial, registry |
-| 2026-07-13 | `kg/__init__.py` | 更新导出: graph_builder, graph_features, risk_propagation, case_retrieval |
-| 2026-07-13 | `tests/test_data_features_pipeline.py` | 新增: 完整data+features流水线测试 |
-
-### KG 模块验证结果（2026-07-13）
-| 测试项 | 结果 |
+### 侯 待开始
+| 项 | 说明 |
 |---|---|
-| 图构建: 节点/边 | 35,200 节点, 279,324 边 ✅ |
-| 流向边 (D8算法) | 33,842 条 (96.1%格点有有效流向) ✅ |
-| 沿海节点识别 | 8,770 个 (24.9%) ✅ |
-| 山洪传播 (5源节点) | 14 受影响节点, 平均风险 0.45 ✅ |
-| 案例检索 | 添加+搜索正常 ✅ |
+| `app/` | Gradio 界面 |
 
-### 四灾害 LightGBM 基线
+### 四灾害 LightGBM 基线（label_builder标签）
+
 | 灾害 | 标签 | 测试CSI | 测试POD | 测试FAR | AUC |
 |---|---|---|---|---|---|
-| 暴雨山洪 | `flash_flood_risk >= 1` | 0.983 | 0.994 | 0.011 | 0.999 |
-| 极端高温 | `heatwave_day_flag` (已有) | 0.283 | 0.477 | 0.589 | 0.922 |
-| 沙尘强风 | `wind10 > P95 AND rh2m < 30%` (代理) | 0.947 | 1.000 | 0.053 | 1.000 |
-| 沿海风浪 | `orography < 100m AND wind10 > P90` (代理) | 0.920 | 0.999 | 0.079 | 1.000 |
+| 暴雨山洪 | `label_builder` | 0.993 | 0.999 | 0.007 | 1.000 |
+| 极端高温 | `heatwave_day_flag` | 0.170* | 0.237* | 0.621* | 0.986 |
+| 沙尘强风 | `label_builder standard` | 0.961 | 1.000 | 0.039 | 1.000 |
+| 沿海风浪 | `label_builder standard` | 0.981 | 1.000 | 0.019 | 1.000 |
 
-> 极端高温待侯 `label_builder.py` 改进标签后重训；沙尘/风浪标签已由侯构建完成（2026-07-11），吕可切换使用 `standard` 模式重训基线。
-
-### 侯 下一步
-1. `app/gradio_app.py` — Gradio Web 主界面
-2. `app/components/` — 风险热力图、KG影响链图、预警简报卡片
-3. `llm_agent/tools/` — predict_tool, kg_query_tool, case_search_tool
+> *高温10月测试正样本率仅0.7%；全年12月CV CSI=0.932±0.042，最高10月=0.986。
+> 冬季部分变量(cape/cin/pwat等)全为NaN，已用fillna(0)处理。
 
 ### 吕 下一步
-1. 使用侯的 `label_builder.py` 更新沙尘/风浪标签，重训基线
-2. `models/lstm_model.py` — LSTM 时序特征提取
-3. `evaluation/spatial_cv.py` — 时空交叉验证
-4. `llm_agent/prompt_templates.py` + `safety.py` — LLM 幻觉防控
+1. `models/stacking_model.py` — LightGBM + LSTM 堆叠融合
+2. `llm_agent/` — Agent + 幻觉防控
+3. 等侯产出后：特征增益测试、图特征注入
 
 ---
 
