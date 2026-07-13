@@ -131,14 +131,22 @@ compute_all_metrics(y_true, y_pred, y_proba)  # → {CSI, POD, FAR, FBIAS, F1, A
 ```
 indicators/*.nc
   → data/loader.py             # xr.Dataset [吕✅]
-    → data/preprocessor.py     # 缺失值填补、归一化 [侯待]
+    → data/preprocessor.py     # 缺失值填补、归一化 [侯✅ 2026-07-13]
     → data/label_builder.py    # 四类灾害标签 [侯✅ 2026-07-11]
-    → data/splitter.py         # 训练/验证/测试划分 [侯待]
-  → features/                  # 时序+空间衍生特征 [侯待]
-  → kg/                        # 图特征 [侯待]
+    → data/splitter.py         # 训练/验证/测试划分 [侯✅ 2026-07-13]
+  → features/                  # 时序+空间衍生特征 [侯✅ 2026-07-13]
+    → temporal_features.py     #   N日累计/滚动统计/极端天数
+    → spatial_features.py      #   邻域聚合/坡度/沿海/位置编码
+    → feature_registry.py      #   特征注册+消融实验
+  → kg/                        # 知识图谱 [侯✅ 2026-07-13]
+    → graph_builder.py         #   NetworkX DiGraph (35K节点, 279K边)
+    → graph_features.py        #   下游暴露度/上游汇水面积
+    → risk_propagation.py      #   四类灾害传播推理引擎
+    → case_retrieval.py        #   余弦相似度历史案例检索
 → models/                      # LightGBM/LSTM/Stacking [吕✅基线]
 → evaluation/                  # 指标评估 [吕✅]
 → app/                         # Gradio [侯待]
+→ llm_agent/tools/             # LLM工具 [侯待]
 ```
 
 ### DataFrame 列名约定
