@@ -164,10 +164,14 @@ flash_flood_risk                   # 标签（0/1/2/3 → >=1 为正样本）
 | 项 | 状态 | 说明 |
 |---|---|---|
 | 数据加载 | ✅ | `loader.py` + `dataset.py` |
-| LightGBM 基线 | ✅ | 四灾害，label_builder 标签 |
-| LSTM 时序增强 | ✅ | 10万样本，CSI=0.629，AUC=0.981 |
+| LightGBM 基线 | ✅ | 四灾害，label_builder 标签，Optuna 调参 |
+| LSTM 时序增强 | ✅ | 10万样本 CSI=0.629，V2(256hidden)快速验证 CSI=0.612 |
 | 评估体系 | ✅ | CSI/POD/FAR/FBIAS/AUC |
 | 时空交叉验证 | ✅ | 全年12月留一法，CSI=0.932±0.042 |
+| 经纬度编码 | ✅ | sin/cos 周期编码，CSI +0.009，FAR -31% |
+| 极端高温优化 | ✅ | 经纬度+阈值0.75，CSI 0.295→0.618，FAR 0.675→0.185 |
+| Optuna 调参 | ✅ | 30 trials，CSI 0.993→0.9977 |
+| 堆叠融合 | ✅ | 架构完成，待LSTM调优后融合 |
 
 ### 侯（数据）已完成
 | 项 | 状态 | 说明 |
@@ -189,22 +193,26 @@ flash_flood_risk                   # 标签（0/1/2/3 → >=1 为正样本）
 |---|---|
 | `app/` | Gradio 界面 |
 
-### 四灾害 LightGBM 基线（label_builder标签）
+### 四灾害 LightGBM 最终结果（经纬度编码 + Optuna 调参）
 
-| 灾害 | 标签 | 测试CSI | 测试POD | 测试FAR | AUC |
-|---|---|---|---|---|---|
-| 暴雨山洪 | `label_builder` | 0.993 | 0.999 | 0.007 | 1.000 |
-| 极端高温 | `heatwave_day_flag` | 0.170* | 0.237* | 0.621* | 0.986 |
-| 沙尘强风 | `label_builder standard` | 0.961 | 1.000 | 0.039 | 1.000 |
-| 沿海风浪 | `label_builder standard` | 0.981 | 1.000 | 0.019 | 1.000 |
+| 灾害 | 标签 | 测试CSI | 测试POD | 测试FAR | AUC | 最佳阈值 |
+|---|---|---|---|---|---|---|
+| 暴雨山洪 | `label_builder` | **0.998** | 1.000 | 0.002 | 1.000 | 0.50 |
+| 极端高温 | `heatwave_day_flag` | **0.618** | 0.720 | 0.185 | 0.971 | **0.75** |
+| 沙尘强风 | `label_builder standard` | **0.983** | 1.000 | 0.017 | 1.000 | 0.70 |
+| 沿海风浪 | `label_builder standard` | **0.987** | 0.988 | 0.001 | 1.000 | 0.85 |
 
-> *高温10月测试正样本率仅0.7%；全年12月CV CSI=0.932±0.042，最高10月=0.986。
-> 冬季部分变量(cape/cin/pwat等)全为NaN，已用fillna(0)处理。
+> 山洪: 6-8月训→10月测，Optuna最优参数；高温: 6-8月训→8月下测，经纬度编码+阈值优化。
+> 沿海风浪: 已排除 `sst_celsius`（网格 lat/lon ≠ latitude/longitude，尺寸 221 vs 220）。
+> 全年12月CV CSI=0.932±0.042，冬季部分变量(cape/cin/pwat等)全为NaN，已用fillna(0)处理。
 
-### 吕 下一步
-1. `models/stacking_model.py` — LightGBM + LSTM 堆叠融合
-2. `llm_agent/` — Agent + 幻觉防控
-3. 等侯产出后：特征增益测试、图特征注入
+### 吕 待完成
+| 项 | 说明 |
+|---|---|
+| LSTM 大样本训练 | V2(256hidden, 3层) 需 GPU 或更多 CPU 时间，快速验证 CSI=0.612 |
+| 堆叠融合实战 | LightGBM + LSTM 概率拼接，待 LSTM 调优后融合 |
+| 模型上线 | 四灾害模型阈值已确定，可写入 `config/model_config.py` |
+| `llm_agent/` | Agent + 幻觉防控（与侯共同） |
 
 ---
 

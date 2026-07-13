@@ -40,6 +40,8 @@ FLASH_FLOOD_FEATURES = [
     "total_cloud_cover", "net_radiation",
     # 地形
     "orography", "surface_pressure",
+    # 空间位置编码
+    "lat_sin", "lat_cos", "lon_sin", "lon_cos",
 ]
 
 EXTREME_HEAT_FEATURES = [
@@ -49,6 +51,8 @@ EXTREME_HEAT_FEATURES = [
     "sw_net", "lw_net", "net_radiation", "bowen_ratio",
     "total_cloud_cover",
     "orography", "surface_pressure",
+    # 空间位置编码
+    "lat_sin", "lat_cos", "lon_sin", "lon_cos",
 ]
 
 DUST_WIND_FEATURES = [
@@ -59,15 +63,18 @@ DUST_WIND_FEATURES = [
     "rh2m", "vpd_kpa",
     "total_cloud_cover",
     "orography", "surface_pressure",
+    # 空间位置编码
+    "lat_sin", "lat_cos", "lon_sin", "lon_cos",
 ]
 
 COASTAL_WAVE_FEATURES = [
-    "sst_celsius",
     "wind10_speed", "wind925_speed", "wind850_speed",
     "ivt", "ivt_u", "ivt_v",
     "pwat", "rh2m",
     "surface_pressure", "orography",
-]
+    # 空间位置编码
+    "lat_sin", "lat_cos", "lon_sin", "lon_cos",
+]  # 注: sst_celsius 网格不兼容(lat/lon≠latitude/longitude)，已排除
 
 # 四类灾害特征字典
 DISASTER_FEATURES = {
