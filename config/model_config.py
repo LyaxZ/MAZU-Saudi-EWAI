@@ -84,18 +84,18 @@ LIGHTGBM_PARAMS = {
     "objective": "binary",
     "metric": "auc",
     "boosting_type": "gbdt",
-    "num_leaves": 63,
-    "max_depth": 7,
-    "learning_rate": 0.05,
-    "n_estimators": 150,
-    "subsample": 0.8,
-    "colsample_bytree": 0.8,
-    "reg_alpha": 0.1,
-    "reg_lambda": 0.1,
-    "min_child_samples": 50,
+    "num_leaves": 217,           # Optuna 最优
+    "max_depth": 5,              # Optuna 最优
+    "learning_rate": 0.0201,     # Optuna 最优
+    "n_estimators": 309,         # Optuna 最优
+    "subsample": 0.9057,         # Optuna 最优
+    "colsample_bytree": 0.7357,  # Optuna 最优
+    "reg_alpha": 0.1855,         # Optuna 最优
+    "reg_lambda": 6.4941,        # Optuna 最优
+    "min_child_samples": 132,    # Optuna 最优
     "verbose": -1,
     "random_state": 42,
-    "device": "cpu",  # 原型阶段用 CPU
+    "device": "cpu",
 }
 
 # 类别不平衡处理

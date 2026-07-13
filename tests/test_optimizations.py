@@ -16,7 +16,7 @@ LABEL_VARS = ["flash_flood_risk","heatwave_day_flag","tmax_c","wind10_speed","rh
 # 1. 经纬度 sin/cos 周期编码
 # ============================================================
 def add_latlon_features(df, feats):
-    """在 DataFrame 上添加经纬度周期编码特征"""
+    """在 DataFrame 上添加经纬度周期编码特征，返回 (修改后df, 新特征列表)"""
     df = df.copy()
     lat = df.index.get_level_values("latitude")
     lon = df.index.get_level_values("longitude")
@@ -24,10 +24,34 @@ def add_latlon_features(df, feats):
     df["lat_cos"] = np.cos(np.radians(lat))
     df["lon_sin"] = np.sin(np.radians(lon))
     df["lon_cos"] = np.cos(np.radians(lon))
-    return feats + ["lat_sin","lat_cos","lon_sin","lon_cos"]
+    return df, feats + ["lat_sin","lat_cos","lon_sin","lon_cos"]
 
 FF_WITH_LL = FLASH_FLOOD_FEATURES + ["lat_sin","lat_cos","lon_sin","lon_cos"]
 print(f"特征数: {len(FLASH_FLOOD_FEATURES)} → {len(FF_WITH_LL)} (含4个经纬度编码)")
+
+# 加载数据并编码
+print("\n--- 经纬度编码入模对比 ---")
+ds_ll_tr = load_date_range("2025-06-01","2025-08-15", variables=FLASH_FLOOD_FEATURES+["flash_flood_risk"], show_progress=True)
+ds_ll_te = load_date_range("2025-08-16","2025-08-31", variables=FLASH_FLOOD_FEATURES+["flash_flood_risk"], show_progress=True)
+df_ll_tr = ds_ll_tr.to_dataframe().fillna(0); df_ll_te = ds_ll_te.to_dataframe().fillna(0)
+y_ll_tr = (df_ll_tr["flash_flood_risk"]>=1).astype(int).values; y_ll_te = (df_ll_te["flash_flood_risk"]>=1).astype(int).values
+
+# 基准：无经纬度
+m_base = LightGBMDisasterModel("flash_flood")
+m_base.fit(df_ll_tr[FLASH_FLOOD_FEATURES], y_ll_tr)
+p_base = m_base.predict_proba(df_ll_te[FLASH_FLOOD_FEATURES])
+r_base = compute_all_metrics(y_ll_te, (p_base>=0.5).astype(int), p_base)
+print_metrics(r_base, "flash_flood 基准（无经纬度编码）")
+
+# 实验：有经纬度
+df_ll_tr, _ = add_latlon_features(df_ll_tr, FLASH_FLOOD_FEATURES)
+df_ll_te, _ = add_latlon_features(df_ll_te, FLASH_FLOOD_FEATURES)
+m_ll = LightGBMDisasterModel("flash_flood_ll")
+m_ll.fit(df_ll_tr[FF_WITH_LL], y_ll_tr)
+p_ll = m_ll.predict_proba(df_ll_te[FF_WITH_LL])
+r_ll = compute_all_metrics(y_ll_te, (p_ll>=0.5).astype(int), p_ll)
+print_metrics(r_ll, "flash_flood + 经纬度编码")
+print(f"\n经纬度编码 ΔCSI: {r_ll['CSI'] - r_base['CSI']:+.4f}")
 
 # ============================================================
 # 2. 极端高温：夏季测试重评估
