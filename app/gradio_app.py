@@ -126,6 +126,33 @@ def _get_available_dates() -> List[str]:
     return sorted(dates)
 
 
+def _build_date_selector():
+    """构建年月日三分栏日期选择器 (year, month, day dropdowns)。"""
+    dates = _get_available_dates()
+    years = sorted(set(d[:4] for d in dates))
+    months = sorted(set(d[5:7] for d in dates))
+    default = dates[len(dates)//2] if dates else "2025-07-01"
+    with gr.Row():
+        y = gr.Dropdown(label="年", choices=years, value=default[:4], scale=1)
+        m = gr.Dropdown(label="月", choices=months, value=default[5:7], scale=1)
+        d = gr.Dropdown(label="日", choices=[], scale=1)
+    return y, m, d, default
+
+
+def _update_day_choices(year: str, month: str):
+    """根据年月更新日期选项。"""
+    import glob
+    prefix = f"saudi_indicators_{year}{month}"
+    files = glob.glob(os.path.join(INDICATORS_DIR, prefix + "*.nc"))
+    days = sorted(f.replace(prefix, "").replace(".nc", "") for f in files
+                  if len(f.replace(prefix, "").replace(".nc", "")) == 2)
+    return gr.Dropdown(choices=days, value=days[0] if days else None)
+
+
+def _make_date(y: str, m: str, d: str) -> str:
+    return f"{y}-{m}-{d}" if y and m and d else ""
+
+
 def tab1_query(date: str, disaster_type: str, use_features: bool = True):
     """Tab1 核心逻辑：加载数据 → 预处理 → 推理 → 热力图。
 
@@ -173,8 +200,10 @@ def tab1_query(date: str, disaster_type: str, use_features: bool = True):
         yield None, status
 
         feats = [c for c in df_today.columns
-                 if c not in ("day", "latitude", "longitude")
-                 and np.issubdtype(df_today[c].dtype, np.number)]
+                 if c not in ("day", "latitude", "longitude", "step", "surface",
+                              "valid_time", "atmosphere", "heightAboveGround")
+                 and np.issubdtype(df_today[c].dtype, np.number)
+                 and not np.issubdtype(df_today[c].dtype, np.timedelta64)]
 
         pp = DataPreprocessor(strategy="spatial", scaler="standard",
                               clip_outliers=True)
@@ -477,11 +506,8 @@ def build_ui() -> gr.Blocks:
         with gr.Tab("🔍 风险查询"):
             with gr.Row():
                 with gr.Column(scale=1):
-                    date_input_1 = gr.Dropdown(
-                        label="📅 选择日期",
-                        choices=available_dates,
-                        value=default_date,
-                    )
+                    y1, m1, d1, _ = _build_date_selector()
+                    m1.change(_update_day_choices, [y1, m1], d1)
                     disaster_input_1 = gr.Radio(
                         label="🌪️ 灾害类型",
                         choices=disaster_choices,
@@ -500,9 +526,17 @@ def build_ui() -> gr.Blocks:
                 with gr.Column(scale=2):
                     heatmap_output = gr.Plot(label="风险热力图")
 
+            def _tab1_go(y, m, d, disaster, use_feat):
+                date = _make_date(y, m, d)
+                if not date:
+                    yield None, "⚠ 请完整选择年月日"
+                    return
+                for output in tab1_query(date, disaster, use_feat):
+                    yield output
+
             query_btn.click(
-                fn=tab1_query,
-                inputs=[date_input_1, disaster_input_1, use_features_cb],
+                fn=_tab1_go,
+                inputs=[y1, m1, d1, disaster_input_1, use_features_cb],
                 outputs=[heatmap_output, stats_output_1],
             )
 
@@ -510,11 +544,8 @@ def build_ui() -> gr.Blocks:
         with gr.Tab("🌊 影响分析"):
             with gr.Row():
                 with gr.Column(scale=1):
-                    date_input_2 = gr.Dropdown(
-                        label="📅 选择日期",
-                        choices=available_dates,
-                        value=default_date,
-                    )
+                    y2, m2, d2, _ = _build_date_selector()
+                    m2.change(_update_day_choices, [y2, m2], d2)
                     disaster_input_2 = gr.Radio(
                         label="🌪️ 灾害类型",
                         choices=disaster_choices,
@@ -540,9 +571,17 @@ def build_ui() -> gr.Blocks:
                              "risk_score", "is_coastal"],
                 )
 
+            def _tab2_go(y, m, d, disaster, n_src):
+                date = _make_date(y, m, d)
+                if not date:
+                    yield None, None, "⚠ 请完整选择年月日"
+                    return
+                for output in tab2_analyze(date, disaster, n_src):
+                    yield output
+
             analyze_btn.click(
-                fn=tab2_analyze,
-                inputs=[date_input_2, disaster_input_2, n_source_slider],
+                fn=_tab2_go,
+                inputs=[y2, m2, d2, disaster_input_2, n_source_slider],
                 outputs=[impact_graph_output, asset_table_output, stats_output_2],
             )
 
@@ -550,11 +589,8 @@ def build_ui() -> gr.Blocks:
         with gr.Tab("📋 预警简报"):
             with gr.Row():
                 with gr.Column(scale=1):
-                    date_input_3 = gr.Dropdown(
-                        label="📅 选择日期",
-                        choices=available_dates,
-                        value=default_date,
-                    )
+                    y3, m3, d3, _ = _build_date_selector()
+                    m3.change(_update_day_choices, [y3, m3], d3)
                     disaster_input_3 = gr.Radio(
                         label="🌪️ 灾害类型",
                         choices=disaster_choices,
@@ -568,9 +604,15 @@ def build_ui() -> gr.Blocks:
                         elem_id="briefing-output",
                     )
 
+            def _tab3_go(y, m, d, disaster):
+                date = _make_date(y, m, d)
+                if not date:
+                    return "⚠ 请完整选择年月日"
+                return tab3_briefing(date, disaster)
+
             briefing_btn.click(
-                fn=tab3_briefing,
-                inputs=[date_input_3, disaster_input_3],
+                fn=_tab3_go,
+                inputs=[y3, m3, d3, disaster_input_3],
                 outputs=[briefing_output],
             )
 
@@ -688,6 +730,9 @@ def build_ui() -> gr.Blocks:
                 ],
                 inputs=msg_input,
             )
+
+            # 页面加载时清空对话历史
+            app.load(lambda: ([], "等待对话开始..."), None, [chatbot, validation_box])
 
         # ── 底部 ──
         gr.Markdown(
