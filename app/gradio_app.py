@@ -468,14 +468,7 @@ def build_ui() -> gr.Blocks:
     available_dates = _get_available_dates()
     default_date = available_dates[len(available_dates)//2] if available_dates else "2025-07-01"
 
-    with gr.Blocks(
-        title="MAZU 沙特多灾种预警智能体",
-        theme=gr.themes.Soft(),
-        css="""
-        .warning-red { color: #dc3545; font-weight: bold; }
-        .stats-table { width: 100%; }
-        """
-    ) as app:
+    with gr.Blocks(title="MAZU 沙特多灾种预警智能体") as app:
 
         # ── 标题栏 ──
         gr.Markdown(
@@ -601,7 +594,6 @@ def build_ui() -> gr.Blocks:
 
             gr.ChatInterface(
                 fn=chat_respond,
-                type="messages",
                 title="",
                 examples=[
                     "2025年8月15日沙特有山洪风险吗？",
@@ -633,6 +625,8 @@ def launch_app(share: bool = False, **kwargs):
         server_name="0.0.0.0",
         server_port=7860,
         share=share,
+        theme=gr.themes.Soft(),
+        css=""".warning-red { color: #dc3545; font-weight: bold; } .stats-table { width: 100%; }""",
         **kwargs,
     )
 
