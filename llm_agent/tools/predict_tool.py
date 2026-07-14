@@ -185,8 +185,6 @@ class PredictTool:
                 "message": message,
                 "fallback_note": fallback,
             }
-                "message": message,
-            }
 
         except Exception as e:
             return {
