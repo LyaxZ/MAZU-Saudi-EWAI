@@ -581,7 +581,7 @@ def build_ui() -> gr.Blocks:
                 with gr.Column(scale=3):
                     gr.Markdown("### 🤖 MAZU 预警对话助手")
 
-                    chatbot = gr.Chatbot(label="对话", height=550, type="messages")
+                    chatbot = gr.Chatbot(label="对话", height=550)
 
                     with gr.Row():
                         msg_input = gr.Textbox(
@@ -604,43 +604,32 @@ def build_ui() -> gr.Blocks:
             _chat_agent = MazuAgent(verbose=False)
 
             def chat_respond(message, history):
-                """流式对话，同时更新校验面板。"""
-                # 启动时显示 loading
-                yield history + [{"role": "user", "content": message}], "🔧 分析中..."
+                """流式对话，同时更新校验面板。history 是 [(user, bot), ...] 格式。"""
+                history = history or []
+                yield history + [(message, "")], "🔧 分析中..."
 
                 full_response = ""
                 for chunk in _chat_agent.chat_stream(message):
                     full_response += chunk
-                    # 提取校验信息（来源标注）
-                    if "数据来源" in full_response:
-                        lines = full_response.split("---\n")
-                        main_text = lines[0] if lines else full_response
-                        source_text = lines[1] if len(lines) > 1 else ""
-                        # 去掉 main_text 中的来源标注
-                        clean_main = main_text.split("\n---")[0]
-                        yield history + [
-                            {"role": "user", "content": message},
-                            {"role": "assistant", "content": clean_main},
-                        ], source_text or "⏳ 等待结果..."
+                    # 分离主体和来源标注
+                    if "---\n" in full_response:
+                        parts = full_response.rsplit("\n---\n", 1)
+                        clean = parts[0].split("\n---")[0]
+                        source = parts[1] if len(parts) > 1 else "⏳ 生成中..."
                     else:
-                        yield history + [
-                            {"role": "user", "content": message},
-                            {"role": "assistant", "content": full_response},
-                        ], "⏳ 生成中..."
+                        clean = full_response
+                        source = "⏳ 生成中..."
+                    yield history + [(message, clean)], source
 
                 # 最终解析
-                if "---\n" in full_response:
-                    parts = full_response.split("\n---\n", 1)
-                    clean_main = parts[0]
-                    source_text = parts[1] if len(parts) > 1 else ""
+                if "\n---\n" in full_response:
+                    parts = full_response.rsplit("\n---\n", 1)
+                    clean = parts[0].split("\n---")[0]
+                    source = parts[1] if len(parts) > 1 else "✅ 完成"
                 else:
-                    clean_main = full_response
-                    source_text = "✅ 对话完成"
-
-                yield history + [
-                    {"role": "user", "content": message},
-                    {"role": "assistant", "content": clean_main},
-                ], source_text
+                    clean = full_response
+                    source = "✅ 对话完成"
+                yield history + [(message, clean)], source
 
             send_btn.click(
                 fn=chat_respond,
