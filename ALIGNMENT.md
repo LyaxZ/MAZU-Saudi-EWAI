@@ -163,18 +163,20 @@ flash_flood_risk                   # 标签（0/1/2/3 → >=1 为正样本）
 
 ---
 
-## 7. 当前进度（2026-07-13）← 更新
+## 7. 当前进度（2026-07-13）
 
 ### 吕（模型）已完成
 | 项 | 状态 | 说明 |
 |---|---|---|
-| `data/loader.py` | ✅ | NetCDF 批量加载 |
-| `config/settings.py` | ✅ | 全局路径、网格参数 |
-| `config/model_config.py` | ✅ | 四类灾害特征列表、超参数 |
-| `models/base_model.py` | ✅ | 统一 fit/predict/save/load |
-| `models/lightgbm_model.py` | ✅ | CPU/GPU 自动检测、样本权重 |
-| `evaluation/metrics.py` | ✅ | CSI/POD/FAR/FBIAS/F1/AUC |
-| 四灾害基线训练 | ✅ | 见下方结果 |
+| 数据加载 | ✅ | `loader.py` + `dataset.py` |
+| LightGBM 基线 | ✅ | 四灾害，label_builder 标签，Optuna 调参 |
+| LSTM 时序增强 | ✅ | 10万样本 CSI=0.629，V2(256hidden)快速验证 CSI=0.612 |
+| 评估体系 | ✅ | CSI/POD/FAR/FBIAS/AUC |
+| 时空交叉验证 | ✅ | 全年12月留一法，CSI=0.932±0.042 |
+| 经纬度编码 | ✅ | sin/cos 周期编码，CSI +0.009，FAR -31% |
+| 极端高温优化 | ✅ | 经纬度+阈值0.75，CSI 0.295→0.618，FAR 0.675→0.185 |
+| Optuna 调参 | ✅ | 30 trials，CSI 0.993→0.9977 |
+| 堆叠融合 | ✅ | 架构完成，待LSTM调优后融合 |
 
 ### 侯（数据+特征+KG+App+Tools）✅ 全部完成
 | 项 | 状态 | 说明 |
@@ -210,7 +212,6 @@ flash_flood_risk                   # 标签（0/1/2/3 → >=1 为正样本）
 | 2026-07-13 | `tests/test_data_features_pipeline.py` | 新增: 完整data+features流水线测试 |
 | 2026-07-13 | `app/__init__.py`, `app/components/__init__.py` | 更新导出: gradio_app, risk_heatmap, impact_graph, briefing_card |
 | 2026-07-13 | `llm_agent/__init__.py`, `llm_agent/tools/__init__.py` | 新增: TOOL_REGISTRY, TOOL_DEFINITIONS 导出 |
-| 2026-07-13 | `requirements.txt` | 新增依赖: gradio, matplotlib, scipy |
 
 ### KG 模块验证结果（2026-07-13）
 | 测试项 | 结果 |
@@ -221,24 +222,29 @@ flash_flood_risk                   # 标签（0/1/2/3 → >=1 为正样本）
 | 山洪传播 (5源节点) | 14 受影响节点, 平均风险 0.45 ✅ |
 | 案例检索 | 添加+搜索正常 ✅ |
 
-### 四灾害 LightGBM 基线
-| 灾害 | 标签 | 测试CSI | 测试POD | 测试FAR | AUC |
-|---|---|---|---|---|---|
-| 暴雨山洪 | `flash_flood_risk >= 1` | 0.983 | 0.994 | 0.011 | 0.999 |
-| 极端高温 | `heatwave_day_flag` (已有) | 0.283 | 0.477 | 0.589 | 0.922 |
-| 沙尘强风 | `wind10 > P95 AND rh2m < 30%` (代理) | 0.947 | 1.000 | 0.053 | 1.000 |
-| 沿海风浪 | `orography < 100m AND wind10 > P90` (代理) | 0.920 | 0.999 | 0.079 | 1.000 |
+### 四灾害 LightGBM 最终结果（经纬度编码 + Optuna 调参）
 
-> 极端高温待侯 `label_builder.py` 改进标签后重训；沙尘/风浪标签已由侯构建完成（2026-07-11），吕可切换使用 `standard` 模式重训基线。
+| 灾害 | 标签 | 测试CSI | 测试POD | 测试FAR | AUC | 最佳阈值 |
+|---|---|---|---|---|---|---|
+| 暴雨山洪 | `label_builder` | **0.998** | 1.000 | 0.002 | 1.000 | 0.50 |
+| 极端高温 | `heatwave_day_flag` | **0.618** | 0.720 | 0.185 | 0.971 | **0.75** |
+| 沙尘强风 | `label_builder standard` | **0.983** | 1.000 | 0.017 | 1.000 | 0.70 |
+| 沿海风浪 | `label_builder standard` | **0.987** | 0.988 | 0.001 | 1.000 | 0.85 |
+
+> 山洪: 6-8月训→10月测，Optuna最优参数；高温: 6-8月训→8月下测，经纬度编码+阈值优化。
+> 沿海风浪: 已排除 `sst_celsius`（网格 lat/lon ≠ latitude/longitude，尺寸 221 vs 220）。
+> 全年12月CV CSI=0.932±0.042，冬季部分变量(cape/cin/pwat等)全为NaN，已用fillna(0)处理。
 
 ### 侯 下一步
-✅ **全部完成！** 等待吕完成模型侧（LSTM/Stacking）+ 共同集成 LLM Agent 主循环。
+✅ **全部完成！**
 
-### 吕 下一步
-1. 使用侯的 `label_builder.py` 更新沙尘/风浪标签，重训基线
-2. `models/lstm_model.py` — LSTM 时序特征提取
-3. `evaluation/spatial_cv.py` — 时空交叉验证
-4. `llm_agent/prompt_templates.py` + `safety.py` — LLM 幻觉防控
+### 吕 待完成
+| 项 | 说明 |
+|---|---|
+| LSTM 大样本训练 | V2(256hidden, 3层) 需 GPU 或更多 CPU 时间，快速验证 CSI=0.612 |
+| 堆叠融合实战 | LightGBM + LSTM 概率拼接，待 LSTM 调优后融合 |
+| 模型上线 | 四灾害模型阈值已确定，可写入 `config/model_config.py` |
+| `llm_agent/` | Agent + 幻觉防控（与侯共同） |
 
 ---
 

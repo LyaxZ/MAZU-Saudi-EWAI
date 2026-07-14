@@ -40,6 +40,8 @@ FLASH_FLOOD_FEATURES = [
     "total_cloud_cover", "net_radiation",
     # 地形
     "orography", "surface_pressure",
+    # 空间位置编码
+    "lat_sin", "lat_cos", "lon_sin", "lon_cos",
 ]
 
 EXTREME_HEAT_FEATURES = [
@@ -49,6 +51,8 @@ EXTREME_HEAT_FEATURES = [
     "sw_net", "lw_net", "net_radiation", "bowen_ratio",
     "total_cloud_cover",
     "orography", "surface_pressure",
+    # 空间位置编码
+    "lat_sin", "lat_cos", "lon_sin", "lon_cos",
 ]
 
 DUST_WIND_FEATURES = [
@@ -59,15 +63,18 @@ DUST_WIND_FEATURES = [
     "rh2m", "vpd_kpa",
     "total_cloud_cover",
     "orography", "surface_pressure",
+    # 空间位置编码
+    "lat_sin", "lat_cos", "lon_sin", "lon_cos",
 ]
 
 COASTAL_WAVE_FEATURES = [
-    "sst_celsius",
     "wind10_speed", "wind925_speed", "wind850_speed",
     "ivt", "ivt_u", "ivt_v",
     "pwat", "rh2m",
     "surface_pressure", "orography",
-]
+    # 空间位置编码
+    "lat_sin", "lat_cos", "lon_sin", "lon_cos",
+]  # 注: sst_celsius 网格不兼容(lat/lon≠latitude/longitude)，已排除
 
 # 四类灾害特征字典
 DISASTER_FEATURES = {
@@ -84,18 +91,18 @@ LIGHTGBM_PARAMS = {
     "objective": "binary",
     "metric": "auc",
     "boosting_type": "gbdt",
-    "num_leaves": 63,
-    "max_depth": 7,
-    "learning_rate": 0.05,
-    "n_estimators": 150,
-    "subsample": 0.8,
-    "colsample_bytree": 0.8,
-    "reg_alpha": 0.1,
-    "reg_lambda": 0.1,
-    "min_child_samples": 50,
+    "num_leaves": 217,           # Optuna 最优
+    "max_depth": 5,              # Optuna 最优
+    "learning_rate": 0.0201,     # Optuna 最优
+    "n_estimators": 309,         # Optuna 最优
+    "subsample": 0.9057,         # Optuna 最优
+    "colsample_bytree": 0.7357,  # Optuna 最优
+    "reg_alpha": 0.1855,         # Optuna 最优
+    "reg_lambda": 6.4941,        # Optuna 最优
+    "min_child_samples": 132,    # Optuna 最优
     "verbose": -1,
     "random_state": 42,
-    "device": "cpu",  # 原型阶段用 CPU
+    "device": "cpu",
 }
 
 # 类别不平衡处理
