@@ -118,11 +118,11 @@ def main():
                 print(f"未知命令: {user_input}，输入 /help 查看帮助")
             continue
 
-        # 调用 Agent
+        # 调用 Agent（流式输出）
         print("\n🤖 AGENT: ", end="", flush=True)
         try:
-            response = agent.chat(user_input)
-            print(response)
+            for chunk in agent.chat_stream(user_input):
+                print(chunk, end="", flush=True)
         except Exception as e:
             print(f"\n❌ 错误: {e}")
         print()

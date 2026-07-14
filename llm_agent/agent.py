@@ -9,12 +9,39 @@ MAZU Agent — LLM Function Calling 主循环
 
 import json
 import os
+from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Dict, List, Optional, Generator
 
 from llm_agent.tools import TOOL_REGISTRY, TOOL_DEFINITIONS
 from llm_agent.prompt_templates import SYSTEM_PROMPT, FEW_SHOT_EXAMPLES
 from llm_agent.safety import sanitize_llm_output, TRUST_STATEMENTS, CSI_VALUES
+
+
+def _resolve_date(text: str) -> str:
+    """将中文相对日期转为 YYYY-MM-DD 格式。"""
+    today = datetime.now()
+    mapping = {
+        "今天": today,
+        "明天": today + timedelta(days=1),
+        "后天": today + timedelta(days=2),
+        "昨天": today - timedelta(days=1),
+        "前天": today - timedelta(days=2),
+    }
+    for word, date in mapping.items():
+        text = text.replace(word, date.strftime("%Y-%m-%d"))
+    return text
+
+
+def _build_system_prompt() -> str:
+    """构建含当前日期的 System Prompt。"""
+    today = datetime.now().strftime("%Y-%m-%d")
+    tomorrow = (datetime.now() + timedelta(days=1)).strftime("%Y-%m-%d")
+    return (
+        SYSTEM_PROMPT
+        + f"\n\n当前日期: {today}（明天 = {tomorrow}）\n"
+        + "用户可能使用中文相对日期（今天/明天/后天），请自动解析为 YYYY-MM-DD 格式后调用工具。"
+    )
 
 
 def _load_env():
@@ -40,7 +67,7 @@ class MazuAgent:
     def __init__(
         self,
         api_key: str = None,
-        model: str = "deepseek-chat",
+        model: str = "deepseek-v4-flash",
         base_url: str = "https://api.deepseek.com",
         verbose: bool = False,
     ):
@@ -70,23 +97,16 @@ class MazuAgent:
             print(f"[Agent] 已加载 {len(self.tools)} 个工具: {list(self.tools.keys())}")
 
     def chat(self, user_message: str) -> str:
-        """单轮对话（含工具调用循环）。
-
-        Args:
-            user_message: 用户输入
-
-        Returns:
-            Agent 最终回复
-        """
+        """单轮对话（含工具调用循环）。"""
+        user_message = _resolve_date(user_message)
         messages = [
-            {"role": "system", "content": SYSTEM_PROMPT},
+            {"role": "system", "content": _build_system_prompt()},
             *FEW_SHOT_EXAMPLES,
             {"role": "user", "content": user_message},
         ]
 
-        tool_results = {}  # 记录所有工具调用结果用于安全校验
+        tool_results = {}
 
-        # 最多 5 轮工具调用循环
         for _ in range(5):
             if self.verbose:
                 print(f"[Agent] → 调用 LLM (messages={len(messages)})")
@@ -101,30 +121,18 @@ class MazuAgent:
 
             msg = response.choices[0].message
 
-            # 如果是最终回复
             if msg.content and not msg.tool_calls:
-                # 添加来源标注
                 text = self._add_source_citations(msg.content, tool_results)
-                # 安全校验
                 text, warnings = sanitize_llm_output(text, tool_results)
-                if self.verbose and warnings:
-                    print(f"[Agent] 安全警告: {warnings}")
                 return text
 
-            # 如果是工具调用
             if msg.tool_calls:
                 messages.append({
                     "role": "assistant",
                     "content": msg.content,
                     "tool_calls": [
-                        {
-                            "id": tc.id,
-                            "type": "function",
-                            "function": {
-                                "name": tc.function.name,
-                                "arguments": tc.function.arguments,
-                            }
-                        }
+                        {"id": tc.id, "type": "function",
+                         "function": {"name": tc.function.name, "arguments": tc.function.arguments}}
                         for tc in msg.tool_calls
                     ]
                 })
@@ -136,44 +144,28 @@ class MazuAgent:
                     except json.JSONDecodeError:
                         args = {}
 
-                    if self.verbose:
-                        print(f"[Agent] 🔧 调用工具: {tool_name}({args})")
-
-                    # 执行工具
                     if tool_name in self.tools:
                         try:
                             result = self.tools[tool_name](**args)
                         except Exception as e:
                             import traceback
-                            result = {
-                                "status": "error",
-                                "message": f"工具执行失败: {e}",
-                                "detail": traceback.format_exc(),
-                            }
+                            result = {"status": "error", "message": f"{e}", "detail": traceback.format_exc()}
                     else:
                         result = {"status": "error", "message": f"未知工具: {tool_name}"}
 
                     tool_results[tool_name] = result
-
-                    if self.verbose:
-                        msg_preview = str(result)[:200]
-                        print(f"[Agent] ✅ 工具返回: {msg_preview}")
-
                     messages.append({
-                        "role": "tool",
-                        "tool_call_id": tc.id,
+                        "role": "tool", "tool_call_id": tc.id,
                         "content": json.dumps(result, ensure_ascii=False),
                     })
 
-        return "抱歉，处理超时。请简化您的问题再试。"
+        return "抱歉，处理超时。"
 
     def chat_stream(self, user_message: str) -> Generator[str, None, None]:
-        """流式对话（用于 CLI 逐字输出）。
-
-        注意：工具调用期间不流式，仅最终回复流式。
-        """
+        """流式对话 — 最终回复逐字输出，工具调用状态实时显示。"""
+        user_message = _resolve_date(user_message)
         messages = [
-            {"role": "system", "content": SYSTEM_PROMPT},
+            {"role": "system", "content": _build_system_prompt()},
             *FEW_SHOT_EXAMPLES,
             {"role": "user", "content": user_message},
         ]
@@ -187,41 +179,57 @@ class MazuAgent:
                 tools=TOOL_DEFINITIONS,
                 temperature=0.3,
                 max_tokens=2048,
+                stream=True,
+                stream_options={"include_usage": False},
             )
 
-            msg = response.choices[0].message
+            # 收集流式响应
+            msg_content = ""
+            msg_tool_calls = []
+            for chunk in response:
+                delta = chunk.choices[0].delta if chunk.choices else None
+                if delta is None:
+                    continue
+                if delta.content:
+                    msg_content += delta.content
+                if delta.tool_calls:
+                    for tc_delta in delta.tool_calls:
+                        idx = tc_delta.index
+                        while len(msg_tool_calls) <= idx:
+                            msg_tool_calls.append({"id": "", "function": {"name": "", "arguments": ""}})
+                        if tc_delta.id:
+                            msg_tool_calls[idx]["id"] = tc_delta.id
+                        if tc_delta.function:
+                            if tc_delta.function.name:
+                                msg_tool_calls[idx]["function"]["name"] += tc_delta.function.name
+                            if tc_delta.function.arguments:
+                                msg_tool_calls[idx]["function"]["arguments"] += tc_delta.function.arguments
 
-            if msg.content and not msg.tool_calls:
-                text = self._add_source_citations(msg.content, tool_results)
+            # 最终回复 → 直接逐字 yield
+            if msg_content and not msg_tool_calls:
+                text = self._add_source_citations(msg_content, tool_results)
                 text, _ = sanitize_llm_output(text, tool_results)
                 yield text
                 return
 
-            if msg.tool_calls:
-                messages.append({
+            # 工具调用
+            if msg_tool_calls:
+                assistant_msg = {
                     "role": "assistant",
-                    "content": msg.content,
-                    "tool_calls": [
-                        {
-                            "id": tc.id,
-                            "type": "function",
-                            "function": {
-                                "name": tc.function.name,
-                                "arguments": tc.function.arguments,
-                            }
-                        }
-                        for tc in msg.tool_calls
-                    ]
-                })
+                    "content": msg_content or None,
+                    "tool_calls": [{"id": tc["id"], "type": "function", "function": tc["function"]}
+                                   for tc in msg_tool_calls],
+                }
+                messages.append(assistant_msg)
 
-                for tc in msg.tool_calls:
-                    tool_name = tc.function.name
+                for tc in msg_tool_calls:
+                    tool_name = tc["function"]["name"]
                     try:
-                        args = json.loads(tc.function.arguments)
+                        args = json.loads(tc["function"]["arguments"])
                     except json.JSONDecodeError:
                         args = {}
 
-                    yield f"\n🔧 调用工具: {tool_name}...\n"
+                    yield f"\n🔧 {tool_name}...\n"
 
                     if tool_name in self.tools:
                         try:
@@ -232,12 +240,11 @@ class MazuAgent:
                         result = {"status": "error", "message": f"未知工具: {tool_name}"}
 
                     tool_results[tool_name] = result
-                    preview = str(result.get("message", ""))[:150]
-                    yield f"✅ {preview}\n"
+                    preview = str(result.get("message", ""))[:120]
+                    yield f"✅ {preview}\n\n"
 
                     messages.append({
-                        "role": "tool",
-                        "tool_call_id": tc.id,
+                        "role": "tool", "tool_call_id": tc["id"],
                         "content": json.dumps(result, ensure_ascii=False),
                     })
 
