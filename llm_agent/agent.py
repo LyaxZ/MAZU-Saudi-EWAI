@@ -3,12 +3,13 @@ MAZU Agent — LLM Function Calling 主循环
 
 用法:
     from llm_agent.agent import MazuAgent
-    agent = MazuAgent(api_key="sk-xxx")
+    agent = MazuAgent()  # 自动从 .env 读取 DEEPSEEK_API_KEY
     response = agent.chat("2025年8月15日沙特有山洪风险吗？")
 """
 
 import json
 import os
+from pathlib import Path
 from typing import Dict, List, Optional, Generator
 
 from llm_agent.tools import TOOL_REGISTRY, TOOL_DEFINITIONS
@@ -16,10 +17,24 @@ from llm_agent.prompt_templates import SYSTEM_PROMPT, FEW_SHOT_EXAMPLES
 from llm_agent.safety import sanitize_llm_output, TRUST_STATEMENTS, CSI_VALUES
 
 
+def _load_env():
+    """从项目根目录 .env 加载环境变量。"""
+    try:
+        from dotenv import load_dotenv
+        env_path = Path(__file__).parent.parent / ".env"
+        load_dotenv(env_path)
+    except ImportError:
+        pass  # python-dotenv 未安装，依赖已有的环境变量
+
+
+_load_env()
+
+
 class MazuAgent:
     """MAZU 灾害预警 Agent。
 
     使用 DeepSeek API（OpenAI 兼容接口），支持 Function Calling。
+    API Key 优先级: 参数 > 环境变量 > .env 文件
     """
 
     def __init__(

@@ -3,11 +3,10 @@
 MAZU 预警智能体 — 命令行对话界面
 
 用法:
-    # 设置 API Key
-    set DEEPSEEK_API_KEY=sk-xxxxxxxx
+    # 在 .env 文件中设置 API Key，然后直接运行
     python app/chat_cli.py
 
-    # 或直接传入
+    # 或通过命令行指定
     python app/chat_cli.py --api-key sk-xxxxxxxx
 
 支持的命令:
@@ -68,8 +67,9 @@ def main():
     if not api_key:
         print("\n❌ 未设置 DEEPSEEK_API_KEY")
         print("请通过以下方式之一设置：")
-        print('  1. 环境变量: set DEEPSEEK_API_KEY=sk-xxxxxxxx')
-        print('  2. 命令行参数: python app/chat_cli.py --api-key sk-xxxxxxxx')
+        print("  1. 在项目根目录创建 .env 文件，写入: DEEPSEEK_API_KEY=sk-xxxxxxxx")
+        print('  2. 环境变量: set DEEPSEEK_API_KEY=sk-xxxxxxxx')
+        print('  3. 命令行参数: python app/chat_cli.py --api-key sk-xxxxxxxx')
         return
 
     # 初始化 Agent
