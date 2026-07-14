@@ -212,7 +212,9 @@ class DisasterInference:
         date: str,
         disaster_type: str,
     ) -> Dict:
-        """从 NC 文件直接加载并预测（便捷接口）。
+        """从 NC 文件直接加载并预测。
+
+        如果请求日期的 NC 文件不存在，自动回退到 2025 年同月同日。
 
         Args:
             date: 日期 (YYYY-MM-DD)
@@ -224,10 +226,30 @@ class DisasterInference:
         load_vars = [f for f in feats
                      if f not in ("lat_sin", "lat_cos", "lon_sin", "lon_cos")]
 
-        ds = load_date_range(date, date, variables=load_vars, show_progress=False)
-        df = ds.to_dataframe().fillna(0)
+        try:
+            ds = load_date_range(date, date, variables=load_vars, show_progress=False)
+            fallback_note = ""
+        except (FileNotFoundError, ValueError, OSError):
+            # 回退到 2025 年同月同日
+            from datetime import datetime
+            try:
+                dt = datetime.strptime(date, "%Y-%m-%d")
+                fallback_date = f"2025-{dt.month:02d}-{dt.day:02d}"
+            except ValueError:
+                raise FileNotFoundError(f"无法解析日期: {date}，且 2025 回退也失败")
 
-        return self.predict(df, disaster_type)
+            ds = load_date_range(fallback_date, fallback_date, variables=load_vars, show_progress=False)
+            fallback_note = f"（注：{date} 无数据，已使用 2025 年同日 {fallback_date} 作为参考）"
+
+        df = ds.to_dataframe().fillna(0)
+        result = self.predict(df, disaster_type)
+
+        if fallback_note:
+            result["fallback_note"] = fallback_note
+            result["original_date"] = date
+            result["actual_date"] = fallback_date
+
+        return result
 
     def predict_batch(
         self,

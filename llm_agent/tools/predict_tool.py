@@ -162,15 +162,19 @@ class PredictTool:
             ]
 
             name = get_label_config(disaster_type)["name_cn"]
+            fallback = result.get("fallback_note", "")
+            actual_date = result.get("actual_date", date)
             message = (
-                f"{date} {name}风险预测（LightGBM模型）：共分析 {n_total:,} 个格点，"
+                f"{actual_date} {name}风险预测（LightGBM模型）：共分析 {n_total:,} 个格点，"
                 f"其中高风险格点 {n_high:,} 个 ({n_high/max(n_total,1)*100:.1f}%)。"
                 f"平均风险值 {mean_risk:.3f}，最高风险值 {max_risk:.3f}。"
             )
+            if fallback:
+                message += f" {fallback}"
 
             return {
                 "status": "success",
-                "date": date,
+                "date": actual_date,
                 "disaster_type": disaster_type,
                 "n_total_cells": n_total,
                 "n_high_risk_cells": n_high,
@@ -178,6 +182,9 @@ class PredictTool:
                 "max_risk": round(max_risk, 4),
                 "affected_area_km2": n_high * 100,
                 "top_risk_locations": top_locations,
+                "message": message,
+                "fallback_note": fallback,
+            }
                 "message": message,
             }
 
