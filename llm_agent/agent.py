@@ -144,7 +144,12 @@ class MazuAgent:
                         try:
                             result = self.tools[tool_name](**args)
                         except Exception as e:
-                            result = {"status": "error", "message": str(e)}
+                            import traceback
+                            result = {
+                                "status": "error",
+                                "message": f"工具执行失败: {e}",
+                                "detail": traceback.format_exc(),
+                            }
                     else:
                         result = {"status": "error", "message": f"未知工具: {tool_name}"}
 

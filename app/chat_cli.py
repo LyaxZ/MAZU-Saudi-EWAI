@@ -29,7 +29,7 @@ from llm_agent.agent import MazuAgent
 
 HEADER = r"""
 ╔══════════════════════════════════════════════╗
-║        🏔 MAZU 沙特多灾种预警智能体          ║
+║        🏔 AGENT 沙特多灾种预警智能体          ║
 ║   暴雨山洪 · 极端高温 · 沙尘强风 · 沿海风浪   ║
 ╚══════════════════════════════════════════════╝
 """
@@ -119,7 +119,7 @@ def main():
             continue
 
         # 调用 Agent
-        print("\n🤖 MAZU: ", end="", flush=True)
+        print("\n🤖 AGENT: ", end="", flush=True)
         try:
             response = agent.chat(user_input)
             print(response)

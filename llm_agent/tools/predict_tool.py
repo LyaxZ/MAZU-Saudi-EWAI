@@ -124,13 +124,12 @@ class PredictTool:
 
             proba = result["proba"]
             threshold = result["threshold"]
+            lat_arr = result["lat"]
+            lon_arr = result["lon"]
             high_mask = proba >= threshold
-            n_high = int(high_mask.sum())
 
             # 空间过滤
             if any(x is not None for x in [lat_min, lat_max, lon_min, lon_max]):
-                lat_arr = result["lat"]
-                lon_arr = result["lon"]
                 mask = np.ones(len(proba), dtype=bool)
                 if lat_min is not None:
                     mask &= lat_arr >= lat_min
@@ -144,7 +143,8 @@ class PredictTool:
                 lat_arr = lat_arr[mask]
                 lon_arr = lon_arr[mask]
                 high_mask = high_mask[mask]
-                n_high = int(high_mask.sum())
+
+            n_high = int(high_mask.sum())
 
             n_total = len(proba)
             if n_total == 0:
