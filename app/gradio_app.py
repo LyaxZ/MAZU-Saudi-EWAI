@@ -126,17 +126,19 @@ def _get_available_dates() -> List[str]:
     return sorted(dates)
 
 
-def _build_date_selector():
-    """构建年月日三分栏日期选择器 (year, month, day dropdowns)。"""
+def _build_date_selector(default_date: str):
+    """构建年月日三分栏日期选择器。"""
     dates = _get_available_dates()
     years = sorted(set(d[:4] for d in dates))
     months = sorted(set(d[5:7] for d in dates))
-    default = dates[len(dates)//2] if dates else "2025-07-01"
+    # 初始日选项
+    init_days = sorted(set(d[8:10] for d in dates
+                          if d[:7] == default_date[:7]))
     with gr.Row():
-        y = gr.Dropdown(label="年", choices=years, value=default[:4], scale=1)
-        m = gr.Dropdown(label="月", choices=months, value=default[5:7], scale=1)
-        d = gr.Dropdown(label="日", choices=[], scale=1)
-    return y, m, d, default
+        y = gr.Dropdown(label="年", choices=years, value=default_date[:4], scale=1)
+        m = gr.Dropdown(label="月", choices=months, value=default_date[5:7], scale=1)
+        d = gr.Dropdown(label="日", choices=init_days, value=default_date[8:10], scale=1)
+    return y, m, d
 
 
 def _update_day_choices(year: str, month: str):
@@ -506,7 +508,7 @@ def build_ui() -> gr.Blocks:
         with gr.Tab("🔍 风险查询"):
             with gr.Row():
                 with gr.Column(scale=1):
-                    y1, m1, d1, _ = _build_date_selector()
+                    y1, m1, d1 = _build_date_selector(default_date)
                     m1.change(_update_day_choices, [y1, m1], d1)
                     disaster_input_1 = gr.Radio(
                         label="🌪️ 灾害类型",
@@ -544,7 +546,7 @@ def build_ui() -> gr.Blocks:
         with gr.Tab("🌊 影响分析"):
             with gr.Row():
                 with gr.Column(scale=1):
-                    y2, m2, d2, _ = _build_date_selector()
+                    y2, m2, d2 = _build_date_selector(default_date)
                     m2.change(_update_day_choices, [y2, m2], d2)
                     disaster_input_2 = gr.Radio(
                         label="🌪️ 灾害类型",
@@ -589,7 +591,7 @@ def build_ui() -> gr.Blocks:
         with gr.Tab("📋 预警简报"):
             with gr.Row():
                 with gr.Column(scale=1):
-                    y3, m3, d3, _ = _build_date_selector()
+                    y3, m3, d3 = _build_date_selector(default_date)
                     m3.change(_update_day_choices, [y3, m3], d3)
                     disaster_input_3 = gr.Radio(
                         label="🌪️ 灾害类型",
@@ -730,9 +732,6 @@ def build_ui() -> gr.Blocks:
                 ],
                 inputs=msg_input,
             )
-
-            # 页面加载时清空对话历史
-            app.load(lambda: ([], "等待对话开始..."), None, [chatbot, validation_box])
 
         # ── 底部 ──
         gr.Markdown(
