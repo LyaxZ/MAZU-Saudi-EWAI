@@ -145,8 +145,13 @@ indicators/*.nc
     → case_retrieval.py        #   余弦相似度历史案例检索
 → models/                      # LightGBM/LSTM/Stacking [吕✅基线]
 → evaluation/                  # 指标评估 [吕✅]
-→ app/                         # Gradio [侯待]
-→ llm_agent/tools/             # LLM工具 [侯待]
+→ app/                         # Gradio [侯✅ 2026-07-13]
+    → gradio_app.py              #   3-Tab Web界面
+    → components/                #   热力图/影响链图/简报卡片
+→ llm_agent/tools/             # LLM工具 [侯✅ 2026-07-13]
+    → predict_tool.py            #   风险预测
+    → kg_query_tool.py           #   KG影响查询
+    → case_search_tool.py        #   案例检索
 ```
 
 ### DataFrame 列名约定
@@ -171,7 +176,7 @@ flash_flood_risk                   # 标签（0/1/2/3 → >=1 为正样本）
 | `evaluation/metrics.py` | ✅ | CSI/POD/FAR/FBIAS/F1/AUC |
 | 四灾害基线训练 | ✅ | 见下方结果 |
 
-### 侯（数据+特征+KG）✅ 大部分完成
+### 侯（数据+特征+KG+App+Tools）✅ 全部完成
 | 项 | 状态 | 说明 |
 |---|---|---|
 | `data/label_builder.py` | ✅ | 四类灾害标签构建（2026-07-11） |
@@ -185,8 +190,13 @@ flash_flood_risk                   # 标签（0/1/2/3 → >=1 为正样本）
 | `kg/graph_features.py` | ✅ | 下游N跳暴露度BFS、上游汇水面积、沿海距离、图拓扑特征（2026-07-13） |
 | `kg/risk_propagation.py` | ✅ | 四类灾害传播引擎: 山洪下游衰减/沙尘风向扇形/高温暴露汇总/风浪沿海内陆（2026-07-13） |
 | `kg/case_retrieval.py` | ✅ | 余弦相似度检索、合成案例生成、JSON持久化、按灾害类型过滤（2026-07-13） |
-| `app/` | ❌ | Gradio 界面（待实现） |
-| `llm_agent/tools/` | ❌ | LLM 工具定义（待实现） |
+| `app/gradio_app.py` | ✅ | Gradio Web 3-Tab界面: 风险查询+影响分析+预警简报（2026-07-13） |
+| `app/components/risk_heatmap.py` | ✅ | matplotlib 风险热力图, 多灾害2×2对比图, base64导出（2026-07-13） |
+| `app/components/impact_graph.py` | ✅ | KG影响链可视化: 源→路径→受影响节点, 空间/力导向布局（2026-07-13） |
+| `app/components/briefing_card.py` | ✅ | 四级预警简报(Markdown/HTML/Text), 措施库, 历史案例引用（2026-07-13） |
+| `llm_agent/tools/predict_tool.py` | ✅ | LLM Function Calling工具: 风险预测, 启发式代理+模型接口（2026-07-13） |
+| `llm_agent/tools/kg_query_tool.py` | ✅ | LLM工具: KG空间影响查询, 源节点匹配, 受影响清单（2026-07-13） |
+| `llm_agent/tools/case_search_tool.py` | ✅ | LLM工具: 历史案例检索, 文本→向量代理, 措施推荐（2026-07-13） |
 
 ### 其他修复
 | 日期 | 项 | 说明 |
@@ -198,6 +208,9 @@ flash_flood_risk                   # 标签（0/1/2/3 → >=1 为正样本）
 | 2026-07-13 | `features/__init__.py` | 更新导出: temporal, spatial, registry |
 | 2026-07-13 | `kg/__init__.py` | 更新导出: graph_builder, graph_features, risk_propagation, case_retrieval |
 | 2026-07-13 | `tests/test_data_features_pipeline.py` | 新增: 完整data+features流水线测试 |
+| 2026-07-13 | `app/__init__.py`, `app/components/__init__.py` | 更新导出: gradio_app, risk_heatmap, impact_graph, briefing_card |
+| 2026-07-13 | `llm_agent/__init__.py`, `llm_agent/tools/__init__.py` | 新增: TOOL_REGISTRY, TOOL_DEFINITIONS 导出 |
+| 2026-07-13 | `requirements.txt` | 新增依赖: gradio, matplotlib, scipy |
 
 ### KG 模块验证结果（2026-07-13）
 | 测试项 | 结果 |
@@ -219,9 +232,7 @@ flash_flood_risk                   # 标签（0/1/2/3 → >=1 为正样本）
 > 极端高温待侯 `label_builder.py` 改进标签后重训；沙尘/风浪标签已由侯构建完成（2026-07-11），吕可切换使用 `standard` 模式重训基线。
 
 ### 侯 下一步
-1. `app/gradio_app.py` — Gradio Web 主界面
-2. `app/components/` — 风险热力图、KG影响链图、预警简报卡片
-3. `llm_agent/tools/` — predict_tool, kg_query_tool, case_search_tool
+✅ **全部完成！** 等待吕完成模型侧（LSTM/Stacking）+ 共同集成 LLM Agent 主循环。
 
 ### 吕 下一步
 1. 使用侯的 `label_builder.py` 更新沙尘/风浪标签，重训基线
