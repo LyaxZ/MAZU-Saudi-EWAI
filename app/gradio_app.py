@@ -618,12 +618,13 @@ def launch_app(share: bool = False, **kwargs):
 
     Args:
         share: 是否创建公共链接
-        **kwargs: 传递给 gr.Blocks.launch() 的其他参数
+        **kwargs: 传递给 gr.Blocks.launch() 的其他参数（如 server_port, server_name 等）
     """
+    kwargs.setdefault("server_name", "0.0.0.0")
+    kwargs.setdefault("server_port", 7860)
+
     app = build_ui()
     app.launch(
-        server_name="0.0.0.0",
-        server_port=7860,
         share=share,
         theme=gr.themes.Soft(),
         css=""".warning-red { color: #dc3545; font-weight: bold; } .stats-table { width: 100%; }""",
