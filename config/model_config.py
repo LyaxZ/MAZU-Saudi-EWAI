@@ -91,6 +91,22 @@ DISASTER_FEATURES = {
     "coastal_wave": COASTAL_WAVE_FEATURES,
 }
 
+# 四类灾害最佳分类阈值（经网格搜索验证）
+DISASTER_THRESHOLDS = {
+    "flash_flood": 0.50,
+    "extreme_heat": 0.95,
+    "dust_wind": 0.70,
+    "coastal_wave": 0.85,
+}
+
+# 四类灾害标签变量
+DISASTER_LABELS = {
+    "flash_flood": "flash_flood_risk",
+    "extreme_heat": "heatwave_day_flag",
+    "dust_wind": "wind10_speed",     # 由 label_builder 构建
+    "coastal_wave": "wind10_speed",  # 由 label_builder 构建
+}
+
 # ============================================
 # LightGBM 超参数
 # ============================================

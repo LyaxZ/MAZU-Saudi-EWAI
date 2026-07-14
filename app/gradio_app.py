@@ -7,7 +7,7 @@ MAZU 沙特多灾种预警智能体 — Gradio Web 演示
 3. 📋 预警简报: 一键生成结构化预警简报
 
 用法:
-    cd D:\Mazu\MAZU-Saudi-EWAI
+    cd D:/Mazu/MAZU-Saudi-EWAI
     python app/gradio_app.py
 
     或
@@ -46,6 +46,16 @@ from kg.case_retrieval import CaseRetrieval
 from app.components.risk_heatmap import RiskHeatmap
 from app.components.impact_graph import ImpactGraphVisualizer
 from app.components.briefing_card import BriefingCardGenerator
+
+# 模型推理引擎（懒加载单例）
+from models.inference import DisasterInference, add_latlon_features
+_inference_engine: Optional[DisasterInference] = None
+
+def _get_engine() -> DisasterInference:
+    global _inference_engine
+    if _inference_engine is None:
+        _inference_engine = DisasterInference()
+    return _inference_engine
 
 
 # ═══════════════════════════════════════════════════════════
@@ -137,9 +147,9 @@ def tab1_query(date: str, disaster_type: str, use_features: bool = True):
             "daily_precip_total", "cape", "cin",
             "t2m_c", "tmax_c", "tmin_c",
             "rh2m", "vpd_kpa",
-            "wind10_speed", "sst_celsius", "ivt",
+            "wind10_speed", "ivt",
             "orography", "surface_pressure",
-        ]
+        ]  # 注: sst_celsius 已排除（网格不兼容）
         # 取前后各3天以支持时序特征
         start_date = str(pd.Timestamp(date) - pd.Timedelta(days=7))
         end_date = date
@@ -189,14 +199,16 @@ def tab1_query(date: str, disaster_type: str, use_features: bool = True):
                                   t_feats_today.reset_index(drop=True),
                                   s_feats.reset_index(drop=True)], axis=1)
 
-        # ── 4. 近似风险值 ──
-        # 在没有模型的情况下，使用物理指标构建近似风险分数
-        status = f"🔍 计算风险分布..."
+        # ── 4. 模型推理 ──
+        status = f"🤖 LightGBM 模型推理中..."
         yield None, status
 
-        risk_score = _compute_heuristic_risk(df_clean, disaster_type)
+        engine = _get_engine()
+        result = engine.predict(df_today, disaster_type)
+        risk_score = result["proba"]
+        threshold = result["threshold"]
 
-        df_risk = df_clean[["latitude", "longitude"]].copy()
+        df_risk = df_today[["latitude", "longitude"]].copy()
         df_risk["risk_score"] = risk_score
 
         # ── 5. 热力图 ──
@@ -211,7 +223,7 @@ def tab1_query(date: str, disaster_type: str, use_features: bool = True):
         )
 
         # ── 6. 统计 ──
-        n_high = int((risk_score > 0.5).sum())
+        n_high = int((risk_score >= threshold).sum())
         mean_risk = float(np.mean(risk_score))
         max_risk = float(np.max(risk_score))
 
@@ -303,7 +315,7 @@ def tab2_analyze(date: str, disaster_type: str, n_source: int = 10):
             show_progress=False,
         )
 
-        risk_score = _compute_heuristic_risk(df, disaster_type)
+        risk_score = _get_engine().predict(df, disaster_type)["proba"]
 
         # 2. 选 top-N 高风险格点
         df_copy = df.copy()
@@ -387,8 +399,10 @@ def tab3_briefing(date: str, disaster_type: str):
             show_progress=False,
         )
 
-        risk_score = _compute_heuristic_risk(df, disaster_type)
-        n_high = int((risk_score > 0.5).sum())
+        result = _get_engine().predict(df, disaster_type)
+        risk_score = result["proba"]
+        threshold = result["threshold"]
+        n_high = int((risk_score >= threshold).sum())
 
         risk_summary = {
             "n_high_risk_cells": n_high,
