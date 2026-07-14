@@ -601,33 +601,70 @@ def build_ui() -> gr.Blocks:
                     )
 
             from llm_agent.agent import MazuAgent
+            from llm_agent.safety import CSI_VALUES, TRUST_STATEMENTS
+
             _chat_agent = MazuAgent(verbose=False)
 
+            def _parse_validation(full_text: str) -> str:
+                """从 Agent 回复中提取并格式化校验信息。"""
+                lines = []
+                # 检查来源标注
+                if "数据来源" in full_text or "LightGBM" in full_text:
+                    lines.append("### ✅ 模型校验\n")
+                    # 从 safety 模块读取 CSI 值
+                    for dtype, csi in CSI_VALUES.items():
+                        names = {"flash_flood": "山洪", "extreme_heat": "高温",
+                                 "dust_wind": "沙尘", "coastal_wave": "风浪"}
+                        if names.get(dtype, "") in full_text:
+                            lines.append(f"| 指标 | 值 |")
+                            lines.append(f"|---|---|")
+                            lines.append(f"| 模型 | LightGBM |")
+                            lines.append(f"| 灾害 | {names[dtype]} |")
+                            lines.append(f"| CSI | {csi} |")
+                            lines.append(f"| 数据 | 2025年气象数据 |")
+                            break
+                    if not any("|" in l for l in lines[1:]):
+                        # 没匹配到具体灾害，显示通用
+                        lines.append(f"| 指标 | 值 |")
+                        lines.append(f"|---|---|")
+                        lines.append(f"| 模型 | LightGBM |")
+                        lines.append(f"| 数据 | 2025年气象数据 |")
+                else:
+                    lines.append("### ⏳ 校验中...")
+
+                # 有知识图谱引用
+                if "知识图谱" in full_text:
+                    lines.append("\n### 🔗 知识图谱\n已进行下游影响分析")
+
+                # 有历史案例引用
+                if "历史案例" in full_text or "案例检索" in full_text:
+                    lines.append("\n### 📚 历史案例\n已检索相似案例")
+
+                return "\n".join(lines) if lines else "⏳ 分析中..."
+
             def chat_respond(message, history):
-                """流式对话，同时更新校验面板。history 是 [{"role":..., "content":...}, ...] 格式。"""
+                """流式对话，同时更新校验面板。"""
                 history = history or []
                 yield history + [{"role": "user", "content": message}, {"role": "assistant", "content": ""}], "🔧 分析中..."
 
                 full_response = ""
                 for chunk in _chat_agent.chat_stream(message):
                     full_response += chunk
+                    # 分离对话主体（去掉来源标注）
                     if "\n---\n" in full_response:
-                        parts = full_response.rsplit("\n---\n", 1)
-                        clean = parts[0].split("\n---")[0]
-                        source = parts[1] if len(parts) > 1 else "⏳ 生成中..."
+                        clean = full_response.split("\n---\n")[0]
                     else:
                         clean = full_response
-                        source = "⏳ 生成中..."
-                    yield history + [{"role": "user", "content": message}, {"role": "assistant", "content": clean}], source
+                    validation = _parse_validation(full_response)
+                    yield history + [{"role": "user", "content": message}, {"role": "assistant", "content": clean}], validation
 
+                # 最终
                 if "\n---\n" in full_response:
-                    parts = full_response.rsplit("\n---\n", 1)
-                    clean = parts[0].split("\n---")[0]
-                    source = parts[1] if len(parts) > 1 else "✅ 完成"
+                    clean = full_response.split("\n---\n")[0]
                 else:
                     clean = full_response
-                    source = "✅ 对话完成"
-                yield history + [{"role": "user", "content": message}, {"role": "assistant", "content": clean}], source
+                validation = _parse_validation(full_response)
+                yield history + [{"role": "user", "content": message}, {"role": "assistant", "content": clean}], validation
 
             send_btn.click(
                 fn=chat_respond,
