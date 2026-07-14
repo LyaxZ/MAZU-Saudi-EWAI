@@ -93,8 +93,65 @@ class MazuAgent:
         for name, tool_cls in TOOL_REGISTRY.items():
             self.tools[name] = tool_cls()
 
+        # KG 懒加载标记
+        self._kg_ready = False
+
         if verbose:
             print(f"[Agent] 已加载 {len(self.tools)} 个工具: {list(self.tools.keys())}")
+
+    def _ensure_kg(self):
+        """懒加载知识图谱 + 种子案例（仅首次使用时构建）。"""
+        if self._kg_ready:
+            return
+        try:
+            from data.loader import load_to_dataframe
+            from kg.graph_builder import KnowledgeGraphBuilder
+            print("[Agent] 构建知识图谱（约需 30 秒）...")
+            df = load_to_dataframe(
+                "2025-06-15", "2025-06-15",
+                variables=["orography", "daily_precip_total", "wind10_speed"],
+                show_progress=True,
+            )
+            builder = KnowledgeGraphBuilder(coastal_orography_max=100.0)
+            G = builder.build(df)
+            if "query_kg_impact" in self.tools:
+                self.tools["query_kg_impact"].set_graph(G)
+
+            # 种子案例
+            if "search_similar_cases" in self.tools:
+                cases = [
+                    {"disaster_type": "flash_flood", "date": "2025-08-15",
+                     "description": "麦加地区强降水引发山洪，Wadi Ibrahim水位暴涨",
+                     "severity": 0.95, "location": "麦加 (21.4°N, 39.8°E)",
+                     "measures": "疏散低洼地区居民，关闭Umm Al-Qura大学周边道路"},
+                    {"disaster_type": "flash_flood", "date": "2025-07-20",
+                     "description": "阿西尔山区暴雨导致山洪，艾卜哈市多处被淹",
+                     "severity": 0.88, "location": "艾卜哈 (18.2°N, 42.5°E)",
+                     "measures": "启动民防部门应急响应，转移山区居民"},
+                    {"disaster_type": "dust_wind", "date": "2025-03-12",
+                     "description": "强西北风引发大范围沙尘暴，利雅得能见度降至200米",
+                     "severity": 0.92, "location": "利雅得 (24.7°N, 46.7°E)",
+                     "measures": "取消航班，学校停课，建议佩戴口罩"},
+                    {"disaster_type": "extreme_heat", "date": "2025-07-25",
+                     "description": "极端热浪袭击东部省，达曼气温达51°C",
+                     "severity": 0.90, "location": "达曼 (26.4°N, 50.1°E)",
+                     "measures": "限制户外作业时间，开放避暑中心"},
+                ]
+                for c in cases:
+                    self.tools["search_similar_cases"].cr.add_case(
+                        disaster_type=c["disaster_type"],
+                        date=c["date"],
+                        description=c["description"],
+                        severity=c["severity"],
+                        location=c.get("location", ""),
+                        measures=c.get("measures", ""),
+                    )
+
+            self._kg_ready = True
+            print("[Agent] 知识图谱 + 4条案例就绪")
+        except Exception as e:
+            print(f"[Agent] KG/案例初始化失败（部分功能不可用）: {e}")
+            self._kg_ready = True
 
     def chat(self, user_message: str) -> str:
         """单轮对话（含工具调用循环）。"""
@@ -139,6 +196,9 @@ class MazuAgent:
 
                 for tc in msg.tool_calls:
                     tool_name = tc.function.name
+                    # KG 工具懒加载
+                    if tool_name in ("query_kg_impact",):
+                        self._ensure_kg()
                     try:
                         args = json.loads(tc.function.arguments)
                     except json.JSONDecodeError:
@@ -224,6 +284,9 @@ class MazuAgent:
 
                 for tc in msg_tool_calls:
                     tool_name = tc["function"]["name"]
+                    # KG 工具懒加载
+                    if tool_name in ("query_kg_impact",):
+                        self._ensure_kg()
                     try:
                         args = json.loads(tc["function"]["arguments"])
                     except json.JSONDecodeError:
