@@ -1,10 +1,11 @@
 """
 MAZU 沙特多灾种预警智能体 — Gradio Web 演示
 
-三个 Tab：
+四个 Tab：
 1. 🔍 风险查询: 选择日期 + 灾害 → 风险热力图 + 统计信息
 2. 🌊 影响分析: 点击高风险区 → KG 影响链图 + 承灾体清单
 3. 📋 预警简报: 一键生成结构化预警简报
+4. 💬 智能对话: 自然语言交互，Agent 自动调用工具
 
 用法:
     cd D:/Mazu/MAZU-Saudi-EWAI
@@ -582,6 +583,32 @@ def build_ui() -> gr.Blocks:
                 fn=tab3_briefing,
                 inputs=[date_input_3, disaster_input_3],
                 outputs=[briefing_output],
+            )
+
+        # ── Tab 4: 智能对话 ──
+        with gr.Tab("💬 智能对话"):
+            gr.Markdown("### 🤖 MAZU 预警对话助手\n输入自然语言问题，Agent 自动调用风险预测、知识图谱和历史案例。")
+
+            from llm_agent.agent import MazuAgent
+            _chat_agent = MazuAgent(verbose=False)
+
+            def chat_respond(message, history):
+                """流式对话回调。"""
+                response = ""
+                for chunk in _chat_agent.chat_stream(message):
+                    response += chunk
+                    yield response
+
+            gr.ChatInterface(
+                fn=chat_respond,
+                type="messages",
+                title="",
+                examples=[
+                    "2025年8月15日沙特有山洪风险吗？",
+                    "明天利雅得地区会不会有热浪？",
+                    "红海沿岸有没有风浪预警？",
+                    "帮我看看8月20日的沙尘暴预测",
+                ],
             )
 
         # ── 底部 ──
