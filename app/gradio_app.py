@@ -620,115 +620,82 @@ def build_ui() -> gr.Blocks:
 
         # ── Tab 4: 智能对话 ──
         with gr.Tab("💬 智能对话"):
+            gr.Markdown("### 🤖 MAZU 预警对话助手")
+
+            chatbot = gr.Chatbot(label="对话", height=500)
+            status_text = gr.Textbox(label="状态", value="就绪", interactive=False, max_lines=1)
+
             with gr.Row():
-                # 左侧：大对话框
-                with gr.Column(scale=3):
-                    gr.Markdown("### 🤖 MAZU 预警对话助手")
-
-                    chatbot = gr.Chatbot(label="对话", height=550)
-
-                    with gr.Row():
-                        msg_input = gr.Textbox(
-                            label="",
-                            placeholder="输入问题，如：2025年8月15日沙特有山洪风险吗？",
-                            scale=9,
-                            container=False,
-                        )
-                        send_btn = gr.Button("发送", variant="primary", scale=1)
-
-                # 右侧：数据校验面板
-                with gr.Column(scale=1):
-                    gr.Markdown("### 📊 数据校验")
-                    validation_box = gr.Markdown(
-                        "等待对话开始...",
-                        elem_id="validation-box",
-                    )
+                msg_input = gr.Textbox(
+                    placeholder="输入问题，如：2025年8月15日沙特有山洪风险吗？",
+                    scale=9, container=False, label="",
+                )
+                send_btn = gr.Button("发送", variant="primary", scale=1)
 
             from llm_agent.agent import MazuAgent
-            from llm_agent.safety import CSI_VALUES, TRUST_STATEMENTS
-
             _chat_agent = MazuAgent(verbose=False)
 
-            def _parse_validation(full_text: str) -> str:
-                """从 Agent 回复中提取并格式化校验信息。"""
-                lines = []
-                # 检查来源标注
-                if "数据来源" in full_text or "LightGBM" in full_text:
-                    lines.append("### ✅ 模型校验\n")
-                    # 从 safety 模块读取 CSI 值
-                    for dtype, csi in CSI_VALUES.items():
-                        names = {"flash_flood": "山洪", "extreme_heat": "高温",
-                                 "dust_wind": "沙尘", "coastal_wave": "风浪"}
-                        if names.get(dtype, "") in full_text:
-                            lines.append(f"| 指标 | 值 |")
-                            lines.append(f"|---|---|")
-                            lines.append(f"| 模型 | LightGBM |")
-                            lines.append(f"| 灾害 | {names[dtype]} |")
-                            lines.append(f"| CSI | {csi} |")
-                            lines.append(f"| 数据 | 2025年气象数据 |")
-                            break
-                    if not any("|" in l for l in lines[1:]):
-                        # 没匹配到具体灾害，显示通用
-                        lines.append(f"| 指标 | 值 |")
-                        lines.append(f"|---|---|")
-                        lines.append(f"| 模型 | LightGBM |")
-                        lines.append(f"| 数据 | 2025年气象数据 |")
-                else:
-                    lines.append("### ⏳ 校验中...")
-
-                # 有知识图谱引用
-                if "知识图谱" in full_text:
-                    lines.append("\n### 🔗 知识图谱\n已进行下游影响分析")
-
-                # 有历史案例引用
-                if "历史案例" in full_text or "案例检索" in full_text:
-                    lines.append("\n### 📚 历史案例\n已检索相似案例")
-
-                return "\n".join(lines) if lines else "⏳ 分析中..."
-
-            def _clean_display(text: str) -> str:
-                """去掉工具调用状态行，只保留最终回复。"""
-                import re
-                # 移除 🔧 xxx... 和 ✅ xxx 行
-                text = re.sub(r'\n?🔧[^\n]*\n', '\n', text)
-                text = re.sub(r'\n?✅[^\n]*\n', '\n', text)
-                return text.strip()
-
             def chat_respond(message, history):
-                """流式对话，同时更新校验面板。"""
+                """流式对话。先显示加载状态，工具调用时更新状态，最终流式输出。"""
                 history = history or []
-                yield history + [{"role": "user", "content": message}, {"role": "assistant", "content": ""}], "🔧 分析中..."
+                # 立即显示用户消息 + 加载中
+                yield history + [
+                    {"role": "user", "content": message},
+                    {"role": "assistant", "content": "⏳ 正在分析您的请求..."},
+                ], "🔍 分析中..."
 
-                full_response = ""
+                full = ""
+                last_status = ""
                 for chunk in _chat_agent.chat_stream(message):
-                    full_response += chunk
-                    # 去掉工具日志行用于展示
-                    clean = _clean_display(full_response)
+                    full += chunk
+                    # 检测工具调用状态更新
+                    import re
+                    tool_lines = re.findall(r'🔧\s*(\S+)\.\.\.', full)
+                    if tool_lines and tool_lines[-1] != last_status:
+                        last_status = tool_lines[-1]
+                        names = {"predict_risk": "获取风险预测", "query_kg_impact": "分析知识图谱影响",
+                                 "search_similar_cases": "检索历史案例"}
+                        yield history + [
+                            {"role": "user", "content": message},
+                            {"role": "assistant", "content": f"⏳ {names.get(last_status, last_status)}..."},
+                        ], f"🔧 正在{names.get(last_status, last_status)}..."
+
+                    # 去掉工具日志行
+                    clean = re.sub(r'\n?🔧[^\n]*\n', '\n', full)
+                    clean = re.sub(r'\n?✅[^\n]*\n', '\n', clean)
+                    clean = re.sub(r'^\s*\n', '', clean).strip()
                     # 去掉来源标注
                     if "\n---\n" in clean:
                         clean = clean.split("\n---\n")[0]
-                    validation = _parse_validation(full_response)
-                    yield history + [{"role": "user", "content": message}, {"role": "assistant", "content": clean}], validation
+                    if clean:
+                        yield history + [
+                            {"role": "user", "content": message},
+                            {"role": "assistant", "content": clean},
+                        ], "📝 正在生成回复..."
 
-                clean = _clean_display(full_response)
+                # 最终
+                clean = re.sub(r'\n?🔧[^\n]*\n', '\n', full)
+                clean = re.sub(r'\n?✅[^\n]*\n', '\n', clean)
+                clean = re.sub(r'^\s*\n', '', clean).strip()
                 if "\n---\n" in clean:
                     clean = clean.split("\n---\n")[0]
-                validation = _parse_validation(full_response)
-                yield history + [{"role": "user", "content": message}, {"role": "assistant", "content": clean}], validation
+                yield history + [
+                    {"role": "user", "content": message},
+                    {"role": "assistant", "content": clean},
+                ], "✅ 完成"
 
             send_btn.click(
                 fn=chat_respond,
                 inputs=[msg_input, chatbot],
-                outputs=[chatbot, validation_box],
+                outputs=[chatbot, status_text],
             ).then(lambda: "", None, msg_input)
 
             msg_input.submit(
                 fn=chat_respond,
                 inputs=[msg_input, chatbot],
-                outputs=[chatbot, validation_box],
+                outputs=[chatbot, status_text],
             ).then(lambda: "", None, msg_input)
 
-            # 示例
             gr.Examples(
                 examples=[
                     "2025年8月15日沙特有山洪风险吗？",
@@ -763,7 +730,7 @@ def launch_app(share: bool = False, **kwargs):
     app.launch(
         share=share,
         theme=gr.themes.Soft(),
-        css="""#validation-box { font-size: 13px; background: #f8f9fa; padding: 12px; border-radius: 8px; min-height: 100px; } .warning-red { color: #dc3545; font-weight: bold; } .stats-table { width: 100%; }""",
+        css=""".warning-red { color: #dc3545; font-weight: bold; } .stats-table { width: 100%; }""",
         **kwargs,
     )
 
