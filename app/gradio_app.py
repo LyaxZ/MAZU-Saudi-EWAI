@@ -576,27 +576,93 @@ def build_ui() -> gr.Blocks:
 
         # ── Tab 4: 智能对话 ──
         with gr.Tab("💬 智能对话"):
-            gr.Markdown("### 🤖 MAZU 预警对话助手\n输入自然语言问题，Agent 自动调用风险预测、知识图谱和历史案例。")
+            with gr.Row():
+                # 左侧：大对话框
+                with gr.Column(scale=3):
+                    gr.Markdown("### 🤖 MAZU 预警对话助手")
+
+                    chatbot = gr.Chatbot(label="对话", height=550, type="messages")
+
+                    with gr.Row():
+                        msg_input = gr.Textbox(
+                            label="",
+                            placeholder="输入问题，如：2025年8月15日沙特有山洪风险吗？",
+                            scale=9,
+                            container=False,
+                        )
+                        send_btn = gr.Button("发送", variant="primary", scale=1)
+
+                # 右侧：数据校验面板
+                with gr.Column(scale=1):
+                    gr.Markdown("### 📊 数据校验")
+                    validation_box = gr.Markdown(
+                        "等待对话开始...",
+                        elem_id="validation-box",
+                    )
 
             from llm_agent.agent import MazuAgent
             _chat_agent = MazuAgent(verbose=False)
 
             def chat_respond(message, history):
-                """流式对话回调。"""
-                response = ""
-                for chunk in _chat_agent.chat_stream(message):
-                    response += chunk
-                    yield response
+                """流式对话，同时更新校验面板。"""
+                # 启动时显示 loading
+                yield history + [{"role": "user", "content": message}], "🔧 分析中..."
 
-            gr.ChatInterface(
+                full_response = ""
+                for chunk in _chat_agent.chat_stream(message):
+                    full_response += chunk
+                    # 提取校验信息（来源标注）
+                    if "数据来源" in full_response:
+                        lines = full_response.split("---\n")
+                        main_text = lines[0] if lines else full_response
+                        source_text = lines[1] if len(lines) > 1 else ""
+                        # 去掉 main_text 中的来源标注
+                        clean_main = main_text.split("\n---")[0]
+                        yield history + [
+                            {"role": "user", "content": message},
+                            {"role": "assistant", "content": clean_main},
+                        ], source_text or "⏳ 等待结果..."
+                    else:
+                        yield history + [
+                            {"role": "user", "content": message},
+                            {"role": "assistant", "content": full_response},
+                        ], "⏳ 生成中..."
+
+                # 最终解析
+                if "---\n" in full_response:
+                    parts = full_response.split("\n---\n", 1)
+                    clean_main = parts[0]
+                    source_text = parts[1] if len(parts) > 1 else ""
+                else:
+                    clean_main = full_response
+                    source_text = "✅ 对话完成"
+
+                yield history + [
+                    {"role": "user", "content": message},
+                    {"role": "assistant", "content": clean_main},
+                ], source_text
+
+            send_btn.click(
                 fn=chat_respond,
-                title="",
+                inputs=[msg_input, chatbot],
+                outputs=[chatbot, validation_box],
+            ).then(lambda: "", None, msg_input)
+
+            msg_input.submit(
+                fn=chat_respond,
+                inputs=[msg_input, chatbot],
+                outputs=[chatbot, validation_box],
+            ).then(lambda: "", None, msg_input)
+
+            # 示例
+            gr.Examples(
                 examples=[
                     "2025年8月15日沙特有山洪风险吗？",
                     "明天利雅得地区会不会有热浪？",
                     "红海沿岸有没有风浪预警？",
                     "帮我看看8月20日的沙尘暴预测",
                 ],
+                inputs=msg_input,
             )
 
         # ── 底部 ──
@@ -623,7 +689,7 @@ def launch_app(share: bool = False, **kwargs):
     app.launch(
         share=share,
         theme=gr.themes.Soft(),
-        css=""".warning-red { color: #dc3545; font-weight: bold; } .stats-table { width: 100%; }""",
+        css="""#validation-box { font-size: 13px; background: #f8f9fa; padding: 12px; border-radius: 8px; min-height: 100px; } .warning-red { color: #dc3545; font-weight: bold; } .stats-table { width: 100%; }""",
         **kwargs,
     )
 
