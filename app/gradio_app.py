@@ -686,6 +686,14 @@ def build_ui() -> gr.Blocks:
 
                 return "\n".join(lines) if lines else "⏳ 分析中..."
 
+            def _clean_display(text: str) -> str:
+                """去掉工具调用状态行，只保留最终回复。"""
+                import re
+                # 移除 🔧 xxx... 和 ✅ xxx 行
+                text = re.sub(r'\n?🔧[^\n]*\n', '\n', text)
+                text = re.sub(r'\n?✅[^\n]*\n', '\n', text)
+                return text.strip()
+
             def chat_respond(message, history):
                 """流式对话，同时更新校验面板。"""
                 history = history or []
@@ -694,19 +702,17 @@ def build_ui() -> gr.Blocks:
                 full_response = ""
                 for chunk in _chat_agent.chat_stream(message):
                     full_response += chunk
-                    # 分离对话主体（去掉来源标注）
-                    if "\n---\n" in full_response:
-                        clean = full_response.split("\n---\n")[0]
-                    else:
-                        clean = full_response
+                    # 去掉工具日志行用于展示
+                    clean = _clean_display(full_response)
+                    # 去掉来源标注
+                    if "\n---\n" in clean:
+                        clean = clean.split("\n---\n")[0]
                     validation = _parse_validation(full_response)
                     yield history + [{"role": "user", "content": message}, {"role": "assistant", "content": clean}], validation
 
-                # 最终
-                if "\n---\n" in full_response:
-                    clean = full_response.split("\n---\n")[0]
-                else:
-                    clean = full_response
+                clean = _clean_display(full_response)
+                if "\n---\n" in clean:
+                    clean = clean.split("\n---\n")[0]
                 validation = _parse_validation(full_response)
                 yield history + [{"role": "user", "content": message}, {"role": "assistant", "content": clean}], validation
 
