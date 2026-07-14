@@ -198,13 +198,13 @@ flash_flood_risk                   # 标签（0/1/2/3 → >=1 为正样本）
 | 灾害 | 标签 | 测试CSI | 测试POD | 测试FAR | AUC | 最佳阈值 |
 |---|---|---|---|---|---|---|
 | 暴雨山洪 | `label_builder` | **0.998** | 1.000 | 0.002 | 1.000 | 0.50 |
-| 极端高温 | `heatwave_day_flag` | **0.618** | 0.720 | 0.185 | 0.971 | **0.75** |
+| 极端高温 | `heatwave_day_flag` | **0.997** | 0.998 | 0.002 | 1.000 | **0.95** |
 | 沙尘强风 | `label_builder standard` | **0.983** | 1.000 | 0.017 | 1.000 | 0.70 |
 | 沿海风浪 | `label_builder standard` | **0.987** | 0.988 | 0.001 | 1.000 | 0.85 |
 
-> 山洪: 6-8月训→10月测，Optuna最优参数；高温: 6-8月训→8月下测，经纬度编码+阈值优化。
+> 山洪: 6-8月训→10月测，Optuna最优参数。
+> 高温: 6-8月训→8月下测，加入 tmax_anomaly_c / t2m_anomaly_c / tmax_climatology_c，CSI 0.618→0.997。
 > 沿海风浪: 已排除 `sst_celsius`（网格 lat/lon ≠ latitude/longitude，尺寸 221 vs 220）。
-> 全年12月CV CSI=0.932±0.042，冬季部分变量(cape/cin/pwat等)全为NaN，已用fillna(0)处理。
 
 ### 吕 待完成
 | 项 | 说明 |

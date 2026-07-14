@@ -45,15 +45,22 @@ FLASH_FLOOD_FEATURES = [
 ]
 
 EXTREME_HEAT_FEATURES = [
+    # 温度异常（★ 核心特征：热浪定义的基础）
+    "tmax_anomaly_c", "t2m_anomaly_c", "tmax_climatology_c",
+    # 基础温度
     "t2m_c", "tmax_c", "tmin_c", "diurnal_temp_range_c",
     "heat_index_c", "apparent_temp_c", "heat_stress_index",
+    # 湿度
     "vpd_kpa", "rh2m", "d2m_c",
+    # 辐射
     "sw_net", "lw_net", "net_radiation", "bowen_ratio",
+    # 云量
     "total_cloud_cover",
+    # 地形
     "orography", "surface_pressure",
     # 空间位置编码
     "lat_sin", "lat_cos", "lon_sin", "lon_cos",
-]
+]  # 共24特征，最佳阈值=0.95
 
 DUST_WIND_FEATURES = [
     "wind10_speed", "wind925_speed", "wind850_speed",
