@@ -180,7 +180,6 @@ class MazuAgent:
 
             if msg.content and not msg.tool_calls:
                 text = self._add_source_citations(msg.content, tool_results)
-                text, warnings = sanitize_llm_output(text, tool_results)
                 return text
 
             if msg.tool_calls:
@@ -314,21 +313,25 @@ class MazuAgent:
         yield "抱歉，处理超时。"
 
     def _add_source_citations(self, text: str, tool_results: Dict) -> str:
-        """在回复末尾追加数据来源标注。"""
+        """在回复末尾追加数据来源标注（仅添加，不做校验）。"""
         if not tool_results:
             return text
 
         sources = []
         if "predict_risk" in tool_results:
             r = tool_results["predict_risk"]
-            if isinstance(r, dict):
+            if isinstance(r, dict) and r.get("status") == "success":
                 dtype = r.get("disaster_type", "")
                 csi = CSI_VALUES.get(dtype, "N/A")
                 sources.append(TRUST_STATEMENTS["predict_risk"].format(csi=csi))
         if "query_kg_impact" in tool_results:
-            sources.append(TRUST_STATEMENTS["query_kg_impact"])
+            r = tool_results["query_kg_impact"]
+            if isinstance(r, dict) and r.get("status") == "success":
+                sources.append(TRUST_STATEMENTS["query_kg_impact"])
         if "search_similar_cases" in tool_results:
-            sources.append(TRUST_STATEMENTS["search_similar_cases"])
+            r = tool_results["search_similar_cases"]
+            if isinstance(r, dict) and r.get("status") == "success":
+                sources.append(TRUST_STATEMENTS["search_similar_cases"])
 
         if sources:
             text += "\n\n---\n" + "\n".join(sources)

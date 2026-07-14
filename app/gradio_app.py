@@ -23,10 +23,9 @@ footer { display: none !important; }
 .main-header { text-align: center; padding: 20px 0 10px 0; }
 .main-header h1 { font-size: 28px; font-weight: 700; color: #1a1a2e; margin: 0; }
 .main-header p { color: #8e8ea0; font-size: 14px; margin: 4px 0 0 0; }
-#chatbot { border-radius: 12px; }
-#chatbot .bubble-wrap { max-width: 85%; }
-#chatbot .user { background: #e8f0fe; border-radius: 18px 18px 4px 18px; padding: 10px 16px; }
-#chatbot .bot { background: #ffffff; border-radius: 18px 18px 18px 4px; padding: 10px 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.06); }
+#chatbot { border-radius: 12px; max-width: 100%; }
+#chatbot > div { max-width: 100% !important; }
+#chatbot .message-wrap { max-width: 100% !important; }
 .input-row { background: #fff; border-radius: 16px; border: 1px solid #e0e0e0; padding: 8px 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.04); }
 .input-row textarea { border: none !important; box-shadow: none !important; resize: none; font-size: 15px; padding: 8px; }
 .send-btn { background: #4f46e5 !important; border: none !important; border-radius: 10px !important; color: white !important; font-weight: 600 !important; padding: 10px 20px !important; }
