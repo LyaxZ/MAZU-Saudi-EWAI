@@ -308,15 +308,15 @@ def tab2_analyze(date: str, disaster_type: str, n_source: int = 10):
         status = "📡 计算风险分布..."
         yield None, None, status
 
-        # 1. 加载数据 + 计算风险
-        df = load_to_dataframe(
-            date, date,
-            variables=["orography", "daily_precip_total", "wind10_speed",
-                        "tmax_c", "rh2m", "cape"],
-            show_progress=False,
-        )
+        # 1. 加载数据 + 计算风险（用推理引擎自动加载全部所需变量）
+        result = _get_engine().predict_from_nc(date, disaster_type)
+        risk_score = result["proba"]
 
-        risk_score = _get_engine().predict(df, disaster_type)["proba"]
+        # 构建带坐标的 DataFrame 用于 KG 节点匹配
+        df = pd.DataFrame({
+            "latitude": result["lat"],
+            "longitude": result["lon"],
+        })
 
         # 2. 选 top-N 高风险格点
         df_copy = df.copy()
@@ -392,15 +392,8 @@ def tab3_briefing(date: str, disaster_type: str):
     try:
         _state.ensure_initialized()
 
-        # 1. 加载 + 风险计算
-        df = load_to_dataframe(
-            date, date,
-            variables=["orography", "daily_precip_total", "wind10_speed",
-                        "tmax_c", "rh2m", "cape"],
-            show_progress=False,
-        )
-
-        result = _get_engine().predict(df, disaster_type)
+        # 1. 加载 + 风险计算（用推理引擎自动加载全部所需变量）
+        result = _get_engine().predict_from_nc(date, disaster_type)
         risk_score = result["proba"]
         threshold = result["threshold"]
         n_high = int((risk_score >= threshold).sum())
@@ -416,9 +409,12 @@ def tab3_briefing(date: str, disaster_type: str):
         propagation_result = None
         if _state.G is not None:
             try:
-                df_copy = df.copy()
-                df_copy["risk_score"] = risk_score
-                top = df_copy.nlargest(5, "risk_score")
+                df = pd.DataFrame({
+                    "latitude": result["lat"],
+                    "longitude": result["lon"],
+                })
+                df["risk_score"] = risk_score
+                top = df.nlargest(5, "risk_score")
                 source_nodes = []
                 for _, row in top.iterrows():
                     for node, data in _state.G.nodes(data=True):
