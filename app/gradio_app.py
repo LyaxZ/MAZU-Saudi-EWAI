@@ -623,7 +623,6 @@ def build_ui() -> gr.Blocks:
             gr.Markdown("### 🤖 MAZU 预警对话助手")
 
             chatbot = gr.Chatbot(label="对话", height=500)
-            status_text = gr.Textbox(label="状态", value="就绪", interactive=False, max_lines=1)
 
             with gr.Row():
                 msg_input = gr.Textbox(
@@ -636,64 +635,55 @@ def build_ui() -> gr.Blocks:
             _chat_agent = MazuAgent(verbose=False)
 
             def chat_respond(message, history):
-                """流式对话。先显示加载状态，工具调用时更新状态，最终流式输出。"""
+                """发送后等待完整回复，一次性渲染（保证Markdown格式正确）。"""
                 history = history or []
-                # 立即显示用户消息 + 加载中
+                # 显示加载状态
                 yield history + [
                     {"role": "user", "content": message},
-                    {"role": "assistant", "content": "⏳ 正在分析您的请求..."},
-                ], "🔍 分析中..."
+                    {"role": "assistant", "content": "⏳ 正在分析..."},
+                ]
 
+                # 收集完整回复
+                import re
                 full = ""
                 last_status = ""
                 for chunk in _chat_agent.chat_stream(message):
                     full += chunk
-                    # 检测工具调用状态更新
-                    import re
-                    tool_lines = re.findall(r'🔧\s*(\S+)\.\.\.', full)
-                    if tool_lines and tool_lines[-1] != last_status:
-                        last_status = tool_lines[-1]
-                        names = {"predict_risk": "获取风险预测", "query_kg_impact": "分析知识图谱影响",
+                    # 更新加载提示词
+                    tool_match = re.findall(r'🔧\s*(\S+)\.\.\.', full)
+                    if tool_match and tool_match[-1] != last_status:
+                        last_status = tool_match[-1]
+                        names = {"predict_risk": "获取风险预测", "query_kg_impact": "分析知识图谱",
                                  "search_similar_cases": "检索历史案例"}
                         yield history + [
                             {"role": "user", "content": message},
-                            {"role": "assistant", "content": f"⏳ {names.get(last_status, last_status)}..."},
-                        ], f"🔧 正在{names.get(last_status, last_status)}..."
+                            {"role": "assistant", "content": f"⏳ {names.get(last_status, '处理中')}..."},
+                        ]
 
-                    # 去掉工具日志行
-                    clean = re.sub(r'\n?🔧[^\n]*\n', '\n', full)
-                    clean = re.sub(r'\n?✅[^\n]*\n', '\n', clean)
-                    clean = re.sub(r'^\s*\n', '', clean).strip()
-                    # 去掉来源标注
-                    if "\n---\n" in clean:
-                        clean = clean.split("\n---\n")[0]
-                    if clean:
-                        yield history + [
-                            {"role": "user", "content": message},
-                            {"role": "assistant", "content": clean},
-                        ], "📝 正在生成回复..."
-
-                # 最终
+                # 清洗回复
                 clean = re.sub(r'\n?🔧[^\n]*\n', '\n', full)
                 clean = re.sub(r'\n?✅[^\n]*\n', '\n', clean)
-                clean = re.sub(r'^\s*\n', '', clean).strip()
+                clean = clean.strip()
                 if "\n---\n" in clean:
                     clean = clean.split("\n---\n")[0]
+                # 去掉多余空行
+                clean = re.sub(r'\n{3,}', '\n\n', clean)
+
                 yield history + [
                     {"role": "user", "content": message},
                     {"role": "assistant", "content": clean},
-                ], "✅ 完成"
+                ]
 
             send_btn.click(
                 fn=chat_respond,
                 inputs=[msg_input, chatbot],
-                outputs=[chatbot, status_text],
+                outputs=[chatbot],
             ).then(lambda: "", None, msg_input)
 
             msg_input.submit(
                 fn=chat_respond,
                 inputs=[msg_input, chatbot],
-                outputs=[chatbot, status_text],
+                outputs=[chatbot],
             ).then(lambda: "", None, msg_input)
 
             gr.Examples(
