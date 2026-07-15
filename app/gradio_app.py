@@ -1,5 +1,5 @@
 """
-MAZU 沙特多灾种预警智能体 — DeepSeek 风格对话界面
+MAZU 沙特多灾种预警智能体 — Web 对话界面
 
 用法:
     python app/gradio_app.py
@@ -14,7 +14,7 @@ from llm_agent.agent import MazuAgent
 
 
 # ═══════════════════════════════════════════════
-# CSS: DeepSeek 风格
+# CSS
 # ═══════════════════════════════════════════════
 
 DEEPSEEK_CSS = """
@@ -44,7 +44,7 @@ def build_ui():
         gr.HTML("""
         <div class="main-header">
             <h1>🏔 MAZU 沙特多灾种预警智能体</h1>
-            <p>暴雨山洪 · 极端高温 · 沙尘强风 · 沿海风浪 | LightGBM + 知识图谱 + DeepSeek</p>
+            <p>暴雨山洪 · 极端高温 · 沙尘强风 · 沿海风浪 | LightGBM + 知识图谱 + LLM</p>
         </div>
         """)
 

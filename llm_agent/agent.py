@@ -60,7 +60,7 @@ _load_env()
 class MazuAgent:
     """MAZU 灾害预警 Agent。
 
-    使用 DeepSeek API（OpenAI 兼容接口），支持 Function Calling。
+    使用 LLM API（OpenAI 兼容接口），支持 Function Calling。
     API Key 优先级: 参数 > 环境变量 > .env 文件
     """
 
@@ -73,7 +73,7 @@ class MazuAgent:
     ):
         """
         Args:
-            api_key: DeepSeek API Key（默认从环境变量 DEEPSEEK_API_KEY 读取）
+            api_key: API Key（默认从环境变量 DEEPSEEK_API_KEY 读取）
             model: 模型名称
             base_url: API 地址
             verbose: 是否打印调试信息

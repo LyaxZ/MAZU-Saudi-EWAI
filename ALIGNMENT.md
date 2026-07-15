@@ -1,6 +1,6 @@
 # ALIGNMENT — MAZU 沙特多灾种预警对齐文档
 
-> 吕与侯协作开发 · DeepSeek 模型 · 最后更新 2026-07-14
+> 吕与侯协作开发 · 最后更新 2026-07-14
 
 ---
 
@@ -67,7 +67,7 @@ result = engine.predict_from_nc("2025-08-15", "flash_flood")
 ```
 用户输入 → MazuAgent.chat_stream()
               ↓
-         DeepSeek API (deepseek-chat)
+         LLM API (OpenAI 兼容)
          + 3 工具: predict_risk / query_kg_impact / search_similar_cases
               ↓
          Function Calling 自动调工具
@@ -102,7 +102,7 @@ indicators/*.nc
   → llm_agent/agent.py          [吕✅]  ← Agent 主循环
   → llm_agent/tools/            [侯✅]  ← 三工具
   → llm_agent/prompt_templates  [吕✅]  ← Prompt + Few-Shot
-  → app/gradio_app.py           [吕✅]  ← DeepSeek 风格对话界面
+  → app/gradio_app.py           [吕✅]  ← Web 对话界面
   → app/chat_cli.py             [吕✅]  ← 命令行界面
 ```
 
