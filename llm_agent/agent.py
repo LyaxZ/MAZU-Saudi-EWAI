@@ -117,25 +117,64 @@ class MazuAgent:
             if "query_kg_impact" in self.tools:
                 self.tools["query_kg_impact"].set_graph(G)
 
-            # 种子案例
+            # 种子案例（12条：四灾害各3条，覆盖不同区域和严重程度）
             if "search_similar_cases" in self.tools:
                 cases = [
+                    # ── 山洪 (flash_flood) ──
                     {"disaster_type": "flash_flood", "date": "2025-08-15",
-                     "description": "麦加地区强降水引发山洪，Wadi Ibrahim水位暴涨",
+                     "description": "麦加强降水引发Wadi Ibrahim山洪，水位暴涨3米",
                      "severity": 0.95, "location": "麦加 (21.4°N, 39.8°E)",
-                     "measures": "疏散低洼地区居民，关闭Umm Al-Qura大学周边道路"},
+                     "measures": "疏散低洼地区居民，关闭Umm Al-Qura大学周边道路，出动民防部队救援"},
                     {"disaster_type": "flash_flood", "date": "2025-07-20",
-                     "description": "阿西尔山区暴雨导致山洪，艾卜哈市多处被淹",
+                     "description": "阿西尔山区暴雨导致山洪，艾卜哈市多处被淹，交通中断",
                      "severity": 0.88, "location": "艾卜哈 (18.2°N, 42.5°E)",
-                     "measures": "启动民防部门应急响应，转移山区居民"},
+                     "measures": "启动民防应急响应，转移山区居民至安全点，封锁Wadi跨河路段"},
+                    {"disaster_type": "flash_flood", "date": "2025-10-05",
+                     "description": "吉达北部突降暴雨，城市排水系统超负荷，多个街区积水",
+                     "severity": 0.82, "location": "吉达 (21.5°N, 39.2°E)",
+                     "measures": "关闭积水路段交通，启动排水泵站，发布居民避险通告"},
+
+                    # ── 极端高温 (extreme_heat) ──
+                    {"disaster_type": "extreme_heat", "date": "2025-07-25",
+                     "description": "极端热浪袭击东部省，达曼气温达51°C，体感温度超55°C",
+                     "severity": 0.90, "location": "达曼 (26.4°N, 50.1°E)",
+                     "measures": "限制户外作业时间(11:00-15:00禁止)，开放避暑中心，电力部门启动调峰预案"},
+                    {"disaster_type": "extreme_heat", "date": "2025-08-10",
+                     "description": "利雅得连续5天高温超48°C，夜间温度不降，空调负荷创纪录",
+                     "severity": 0.93, "location": "利雅得 (24.7°N, 46.7°E)",
+                     "measures": "延长避暑中心开放至24:00，医院备足中暑急救物资，呼吁节约用电"},
+                    {"disaster_type": "extreme_heat", "date": "2025-06-28",
+                     "description": "塔布克地区异常高温达47°C，远超常年同期(40°C)",
+                     "severity": 0.85, "location": "塔布克 (28.4°N, 36.6°E)",
+                     "measures": "发布高温橙色预警，暂停学校户外活动，提醒朝觐者注意防暑"},
+
+                    # ── 沙尘强风 (dust_wind) ──
                     {"disaster_type": "dust_wind", "date": "2025-03-12",
                      "description": "强西北风引发大范围沙尘暴，利雅得能见度降至200米",
                      "severity": 0.92, "location": "利雅得 (24.7°N, 46.7°E)",
-                     "measures": "取消航班，学校停课，建议佩戴口罩"},
-                    {"disaster_type": "extreme_heat", "date": "2025-07-25",
-                     "description": "极端热浪袭击东部省，达曼气温达51°C",
-                     "severity": 0.90, "location": "达曼 (26.4°N, 50.1°E)",
-                     "measures": "限制户外作业时间，开放避暑中心"},
+                     "measures": "哈立德国王机场取消所有航班，全市学校停课，建议市民佩戴口罩减少外出"},
+                    {"disaster_type": "dust_wind", "date": "2025-04-05",
+                     "description": "北部哈费尔巴廷地区强沙尘暴，风速达70km/h，油田作业暂停",
+                     "severity": 0.88, "location": "哈费尔巴廷 (28.4°N, 46.0°E)",
+                     "measures": "暂停油田户外作业，关闭85号公路部分路段，发布红色沙尘预警"},
+                    {"disaster_type": "dust_wind", "date": "2025-02-18",
+                     "description": "布赖代至哈伊勒一线沙尘暴，伴随强降温，牲畜受损严重",
+                     "severity": 0.78, "location": "布赖代 (26.3°N, 44.0°E)",
+                     "measures": "牧民转移牲畜至棚舍，高速公路限速降至60km/h，能见度低于500米时封路"},
+
+                    # ── 沿海风浪 (coastal_wave) ──
+                    {"disaster_type": "coastal_wave", "date": "2025-01-15",
+                     "description": "红海北部强风引发大浪，延布港和吉达港船舶作业受限",
+                     "severity": 0.80, "location": "延布 (24.1°N, 38.1°E)",
+                     "measures": "暂停小型船舶出海，港口货物装卸推迟，向渔民发布风浪预警"},
+                    {"disaster_type": "coastal_wave", "date": "2025-11-20",
+                     "description": "阿拉伯湾强东北风导致达曼沿岸海浪超3米，沿海公路部分被淹",
+                     "severity": 0.85, "location": "达曼 (26.4°N, 50.1°E)",
+                     "measures": "封闭沿海低洼路段，朱拜勒工业港暂停作业，居民远离海岸线"},
+                    {"disaster_type": "coastal_wave", "date": "2025-03-08",
+                     "description": "吉赞沿海受印度洋涌浪影响，渔船无法出海，近岸设施受损",
+                     "severity": 0.75, "location": "吉赞 (16.9°N, 42.6°E)",
+                     "measures": "渔船全部召回港口，加固近岸养殖设施，发布海上作业禁令"},
                 ]
                 for c in cases:
                     self.tools["search_similar_cases"].cr.add_case(
@@ -148,7 +187,7 @@ class MazuAgent:
                     )
 
             self._kg_ready = True
-            print("[Agent] 知识图谱 + 4条案例就绪")
+            print("[Agent] 知识图谱 + 12条案例就绪")
         except Exception as e:
             print(f"[Agent] KG/案例初始化失败（部分功能不可用）: {e}")
             self._kg_ready = True
