@@ -30,19 +30,22 @@ FLASH_FLOOD_FEATURES = [
     # 降水
     "daily_precip_total", "daily_convective_precip", "daily_large_scale_precip",
     "monthly_precip_total",
+    # 卫星短历时降水（DS10）
+    "ds10_max_1h",
     # 对流与不稳定
     "cape", "cin",
-    # 水汽
-    "pwat", "ivt", "rh2m", "vpd_kpa",
-    # 风场
-    "wind10_speed", "wind925_speed", "wind850_speed",
+    # 水汽与输送
+    "pwat", "ivt", "ivt_convergence", "rh2m", "vpd_kpa",
+    "moisture_transport850",
+    # 垂直运动与风场
+    "omega500", "wind10_speed", "wind925_speed", "wind850_speed",
     # 云与辐射
     "total_cloud_cover", "net_radiation",
     # 地形
     "orography", "surface_pressure",
     # 空间位置编码
     "lat_sin", "lat_cos", "lon_sin", "lon_cos",
-]
+]  # 共24特征
 
 EXTREME_HEAT_FEATURES = [
     # 温度异常（★ 核心特征：热浪定义的基础）
@@ -66,13 +69,14 @@ DUST_WIND_FEATURES = [
     "wind10_speed", "wind925_speed", "wind850_speed",
     "jet300_speed", "jet200_speed",
     "wind_shear_850_300", "wind_shear_850_200",
+    "relative_vorticity850",
     "monthly_wind_stress_mag", "monthly_orographic_stress",
     "rh2m", "vpd_kpa",
     "total_cloud_cover",
     "orography", "surface_pressure",
     # 空间位置编码
     "lat_sin", "lat_cos", "lon_sin", "lon_cos",
-]
+]  # 共19特征
 
 COASTAL_WAVE_FEATURES = [
     "wind10_speed", "wind925_speed", "wind850_speed",
