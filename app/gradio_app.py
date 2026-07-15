@@ -39,7 +39,7 @@ footer { display: none !important; }
 # ═══════════════════════════════════════════════
 
 def build_ui():
-    with gr.Blocks(title="MAZU 沙特多灾种预警智能体", css=DEEPSEEK_CSS) as app:
+    with gr.Blocks(title="MAZU 沙特多灾种预警智能体") as app:
 
         gr.HTML("""
         <div class="main-header">
@@ -125,6 +125,7 @@ def build_ui():
 def launch_app(share: bool = False, **kwargs):
     kwargs.setdefault("server_name", "0.0.0.0")
     kwargs.setdefault("server_port", 7860)
+    kwargs.setdefault("css", DEEPSEEK_CSS)
     app = build_ui()
     app.launch(share=share, **kwargs)
 
