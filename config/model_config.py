@@ -99,8 +99,8 @@ DISASTER_FEATURES = {
 DISASTER_THRESHOLDS = {
     "flash_flood": 0.50,
     "extreme_heat": 0.95,
-    "dust_wind": 0.70,
-    "coastal_wave": 0.85,
+    "dust_wind": 0.50,
+    "coastal_wave": 0.95,
 }
 
 # 四类灾害标签变量

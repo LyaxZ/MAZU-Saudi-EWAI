@@ -52,15 +52,17 @@ def add_latlon_features(df: pd.DataFrame) -> pd.DataFrame:
 
 
 def _prepare_features(df: pd.DataFrame, disaster_type: str) -> pd.DataFrame:
-    """准备入模特征：添加经纬度编码 + 筛选特征列 + 填 NaN。"""
+    """准备入模特征：添加经纬度编码 + 筛选特征列 + 填 NaN。
+
+    对于模型训练时使用但当前数据中缺失的特征，填 0 代替（丢失的信号 = 无信号）。
+    """
     df = add_latlon_features(df.copy())
     feats = DISASTER_FEATURES[disaster_type]
     missing = [f for f in feats if f not in df.columns]
     if missing:
-        raise KeyError(
-            f"[{disaster_type}] 缺少特征列: {missing}\n"
-            f"可用列: {list(df.columns)}\n"
-            f"请确认 load_date_range 时加载了所需变量。")
+        print(f"  ⚠ [{disaster_type}] {len(missing)} 个特征不在数据中，填 0: {missing}")
+        for f in missing:
+            df[f] = 0.0
     X = df[feats].fillna(0).astype(np.float32)
     return X
 
