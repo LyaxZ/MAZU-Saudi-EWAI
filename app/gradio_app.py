@@ -87,6 +87,8 @@ def build_ui():
 
             clean = re.sub(r'\n?🔧[^\n]*\n', '\n', full)
             clean = re.sub(r'\n?✅[^\n]*\n', '\n', clean)
+            # 去掉首行 "---" 分隔符（LLM可能把回退说明和正文用---隔开）
+            clean = re.sub(r'^\s*---\s*\n+', '', clean)
             # 只把最后一段 --- 当作数据来源标注
             main_text, source_text = clean, ""
             if "\n---\n" in clean:
