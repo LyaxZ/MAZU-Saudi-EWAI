@@ -196,6 +196,22 @@ class KGQueryTool:
             if coastal > 0:
                 summary_text += f" 其中 {coastal} 个沿海格点受到波及。"
 
+            # 基础设施影响分析
+            try:
+                from config.infrastructure import (
+                    find_nearby_infrastructure, format_infrastructure_impact,
+                )
+                high_locs = [loc for loc in locations if loc.get("risk", 0) >= 0.5]
+                if high_locs:
+                    centroid_lat = np.mean([l["lat"] for l in high_locs])
+                    centroid_lon = np.mean([l["lon"] for l in high_locs])
+                    nearby = find_nearby_infrastructure(centroid_lat, centroid_lon, radius_km=50)
+                    impact_text = format_infrastructure_impact(nearby)
+                    if "受影响" in impact_text:
+                        summary_text += "\n\n🏗️ 承灾体影响分析：\n" + impact_text
+            except ImportError:
+                pass
+
             return {
                 "status": "success",
                 "disaster_type": disaster_type,

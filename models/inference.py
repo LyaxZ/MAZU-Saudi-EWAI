@@ -302,6 +302,94 @@ class DisasterInference:
             "n_high_total": int(n_high),
         }
 
+    def predict_trend(
+        self,
+        end_date: str,
+        disaster_type: str,
+        lookback_days: int = 7,
+    ) -> Dict:
+        """预测时序趋势：过去 N 天 → 今天，展示风险演变。
+
+        Args:
+            end_date: 截止日期 (YYYY-MM-DD)
+            disaster_type: 灾害类型
+            lookback_days: 回溯天数
+
+        Returns:
+            {
+                "trend": [{"date": "2025-08-21", "n_high": 1234, "mean_risk": 0.05}, ...],
+                "direction": "上升" | "下降" | "平稳",
+                "change_pct": 变化百分比,
+                "peak_date": 峰值日期,
+            }
+        """
+        from data.loader import load_date_range
+        from datetime import datetime, timedelta
+
+        end_dt = datetime.strptime(end_date, "%Y-%m-%d")
+        start_dt = end_dt - timedelta(days=lookback_days - 1)
+        start_str = start_dt.strftime("%Y-%m-%d")
+
+        feats = DISASTER_FEATURES[disaster_type]
+        label_vars = ["flash_flood_risk", "heatwave_day_flag",
+                       "wind10_speed", "rh2m", "vpd_kpa", "orography"]
+        load_vars = list(set(
+            [f for f in feats
+             if f not in ("lat_sin","lat_cos","lon_sin","lon_cos","sst_celsius")]
+            + label_vars
+        ))
+
+        try:
+            ds = load_date_range(start_str, end_date, variables=load_vars,
+                                 show_progress=False)
+        except Exception:
+            return {"trend": [], "direction": "无数据", "change_pct": 0,
+                    "peak_date": "", "error": "数据加载失败"}
+
+        trend = []
+        for day in sorted(ds["day"].values):
+            date_str = str(day)[:10]
+            day_ds = ds.sel(day=day)
+            df = day_ds.to_dataframe().fillna(0).reset_index()
+            r = self.predict(df, disaster_type)
+            trend.append({
+                "date": date_str,
+                "n_total": r["n_total"],
+                "n_high": r["n_high"],
+                "high_pct": r["high_pct"],
+                "mean_risk": r["mean_risk"],
+                "max_risk": r["max_risk"],
+            })
+
+        # 判断趋势方向
+        if len(trend) >= 2:
+            first = trend[0]["mean_risk"]
+            last = trend[-1]["mean_risk"]
+            change = (last - first) / max(first, 0.001) * 100
+            if change > 20:
+                direction = "↑ 快速上升"
+            elif change > 5:
+                direction = "↗ 缓慢上升"
+            elif change < -20:
+                direction = "↓ 快速下降"
+            elif change < -5:
+                direction = "↘ 缓慢下降"
+            else:
+                direction = "→ 平稳"
+        else:
+            change = 0
+            direction = "—"
+
+        peak = max(trend, key=lambda x: x["mean_risk"]) if trend else {"date": "", "mean_risk": 0}
+
+        return {
+            "trend": trend,
+            "direction": direction,
+            "change_pct": round(change, 1),
+            "peak_date": peak["date"],
+            "peak_mean_risk": peak["mean_risk"],
+        }
+
     def predict_from_nc(
         self,
         date: str,

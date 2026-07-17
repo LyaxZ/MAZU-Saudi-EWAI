@@ -185,6 +185,13 @@ class PredictTool:
                 except Exception:
                     pass  # SHAP 失败不影响主流程
 
+            # 时序趋势分析
+            trend = None
+            try:
+                trend = self.engine.predict_trend(date, disaster_type)
+            except Exception:
+                pass
+
             return {
                 "status": "success",
                 "date": actual_date,
@@ -198,6 +205,7 @@ class PredictTool:
                 "message": message,
                 "fallback_note": fallback,
                 "shap_explanation": explanation,
+                "risk_trend": trend,
             }
 
         except Exception as e:
