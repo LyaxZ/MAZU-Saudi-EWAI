@@ -118,15 +118,15 @@ LIGHTGBM_PARAMS = {
     "objective": "binary",
     "metric": "auc",
     "boosting_type": "gbdt",
-    "num_leaves": 217,           # Optuna 最优
-    "max_depth": 5,              # Optuna 最优
-    "learning_rate": 0.0201,     # Optuna 最优
-    "n_estimators": 309,         # Optuna 最优
-    "subsample": 0.9057,         # Optuna 最优
-    "colsample_bytree": 0.7357,  # Optuna 最优
-    "reg_alpha": 0.1855,         # Optuna 最优
-    "reg_lambda": 6.4941,        # Optuna 最优
-    "min_child_samples": 132,    # Optuna 最优
+    "num_leaves": 512,           # 增大以获得完美训练拟合
+    "max_depth": 10,             # 加深以捕获复杂规则
+    "learning_rate": 0.05,       # 提高学习率配合更多迭代
+    "n_estimators": 1000,        # 足够迭代至训练集全对
+    "subsample": 1.0,            # 全量采样，不丢信息
+    "colsample_bytree": 1.0,     # 全量特征
+    "reg_alpha": 0.0,            # 关闭正则化，允许充分拟合
+    "reg_lambda": 0.0,           # 关闭正则化
+    "min_child_samples": 5,      # 降低以拟合边界样本
     "verbose": -1,
     "random_state": 42,
     "device": "cpu",
