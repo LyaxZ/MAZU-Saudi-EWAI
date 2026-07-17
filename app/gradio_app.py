@@ -87,9 +87,10 @@ def build_ui():
 
             clean = re.sub(r'\n?🔧[^\n]*\n', '\n', full)
             clean = re.sub(r'\n?✅[^\n]*\n', '\n', clean)
+            # 只把最后一段 --- 当作数据来源标注
             main_text, source_text = clean, ""
             if "\n---\n" in clean:
-                parts = clean.split("\n---\n", 1)
+                parts = clean.rsplit("\n---\n", 1)  # 从最后一个 --- 分割
                 main_text = parts[0].strip()
                 source_text = parts[1].strip() if len(parts) > 1 else ""
 

@@ -15,7 +15,8 @@ from typing import Dict, List, Optional, Generator
 
 from llm_agent.tools import TOOL_REGISTRY, TOOL_DEFINITIONS
 from llm_agent.prompt_templates import SYSTEM_PROMPT, FEW_SHOT_EXAMPLES
-from llm_agent.safety import sanitize_llm_output, TRUST_STATEMENTS, CSI_VALUES
+from llm_agent.prompt_templates import SYSTEM_PROMPT
+from llm_agent.tools.predict_tool import PredictTool
 
 
 def _resolve_date(text: str) -> str:
@@ -363,7 +364,6 @@ class MazuAgent:
             # 最终回复 → 直接逐字 yield
             if msg_content and not msg_tool_calls:
                 text = self._add_source_citations(msg_content, tool_results)
-                text, _ = sanitize_llm_output(text, tool_results)
                 yield text
                 return
 
