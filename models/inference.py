@@ -23,7 +23,7 @@ from typing import Dict, List, Optional, Tuple
 
 from config.model_config import (
     DISASTER_FEATURES, DISASTER_THRESHOLDS, DISASTER_LABELS,
-    LIGHTGBM_PARAMS, TRAIN_START, TRAIN_END,
+    LIGHTGBM_PARAMS, TRAIN_START, TRAIN_END, FEATURE_PHYSICS,
 )
 from config.settings import PROJECT_ROOT
 
@@ -207,6 +207,99 @@ class DisasterInference:
             "max_risk": round(float(np.max(proba)), 4),
             "threshold": threshold,
             "disaster_type": disaster_type,
+        }
+
+    def explain(
+        self,
+        df: pd.DataFrame,
+        disaster_type: str,
+        top_n: int = 5,
+    ) -> Dict:
+        """对预测结果进行 SHAP 可解释性分析。
+
+        针对全局平均高风险格点的特征贡献进行解释。
+
+        Args:
+            df: 包含气象变量的 DataFrame
+            disaster_type: 灾害类型
+            top_n: 返回 Top-N 重要特征
+
+        Returns:
+            {
+                "top_features": [{"feature": "cape", "name": "对流有效位能",
+                                   "contribution": 0.38, "unit": "J/kg",
+                                   "description": "CAPE越高对流越旺盛"}],
+                "summary": "本次高风险主要由于 CAPE 异常偏高(贡献38%)和强降水(贡献25%)",
+                "n_samples_used": int
+            }
+        """
+        import shap
+
+        X = _prepare_features(df, disaster_type)
+        model_obj = self.models[disaster_type]
+        model = model_obj.model  # LightGBM Booster
+        feats = DISASTER_FEATURES[disaster_type]
+
+        # 获取高风险样本（概率 ≥ 阈值）
+        threshold = DISASTER_THRESHOLDS.get(disaster_type, 0.5)
+        proba = model_obj.predict_proba(X)
+        high_mask = proba >= threshold
+        n_high = high_mask.sum()
+
+        if n_high == 0:
+            return {
+                "top_features": [],
+                "summary": "无高风险格点，无法计算 SHAP 解释",
+                "n_samples_used": 0,
+            }
+
+        # 对高风险样本抽样（最多 500 个，避免 SHAP 太慢）
+        high_indices = np.where(high_mask)[0]
+        n_sample = min(500, len(high_indices))
+        sampled_idx = np.random.default_rng(42).choice(
+            high_indices, size=n_sample, replace=False)
+        X_high = X.iloc[sampled_idx] if hasattr(X, 'iloc') else X[sampled_idx]
+
+        # SHAP TreeExplainer
+        explainer = shap.TreeExplainer(model)
+        shap_values = explainer.shap_values(X_high)
+
+        # LightGBM binary: shap_values shape = (n_samples, n_features)
+        if isinstance(shap_values, list):
+            shap_values = shap_values[1]  # 正类 SHAP
+
+        # 平均绝对 SHAP 值 → 特征贡献排序
+        mean_abs_shap = np.abs(shap_values).mean(axis=0)
+        feat_contrib = sorted(
+            zip(feats, mean_abs_shap),
+            key=lambda x: x[1], reverse=True
+        )
+
+        # 构建 Top-N
+        total = sum(c for _, c in feat_contrib) or 1.0
+        top_features = []
+        for feat, contrib in feat_contrib[:top_n]:
+            info = FEATURE_PHYSICS.get(feat, (feat, "", ""))
+            pct = round(contrib / total * 100, 1)
+            top_features.append({
+                "feature": feat,
+                "name": info[0],
+                "contribution": pct,
+                "unit": info[1],
+                "description": info[2],
+            })
+
+        # 生成自然语言摘要
+        parts = []
+        for f in top_features[:3]:
+            parts.append(f"{f['name']}(贡献{f['contribution']}%)")
+        summary = f"本次{disaster_type}高风险主要由于: " + "、".join(parts)
+
+        return {
+            "top_features": top_features,
+            "summary": summary,
+            "n_samples_used": n_sample,
+            "n_high_total": int(n_high),
         }
 
     def predict_from_nc(

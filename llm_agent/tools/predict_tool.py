@@ -172,6 +172,19 @@ class PredictTool:
             if fallback:
                 message += f" {fallback}"
 
+            # SHAP 可解释性分析
+            explanation = None
+            if n_high > 0:
+                try:
+                    from data.loader import load_to_dataframe
+                    feat_vars = list(DISASTER_FEATURES[disaster_type])
+                    load_vars = [f for f in feat_vars
+                                 if f not in ("lat_sin","lat_cos","lon_sin","lon_cos","sst_celsius")]
+                    df = load_to_dataframe(date, date, variables=load_vars, show_progress=False).fillna(0)
+                    explanation = self.engine.explain(df, disaster_type)
+                except Exception:
+                    pass  # SHAP 失败不影响主流程
+
             return {
                 "status": "success",
                 "date": actual_date,
@@ -184,6 +197,7 @@ class PredictTool:
                 "top_risk_locations": top_locations,
                 "message": message,
                 "fallback_note": fallback,
+                "shap_explanation": explanation,
             }
 
         except Exception as e:
