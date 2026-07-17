@@ -17,6 +17,7 @@ from llm_agent.tools import TOOL_REGISTRY, TOOL_DEFINITIONS
 from llm_agent.prompt_templates import SYSTEM_PROMPT, FEW_SHOT_EXAMPLES
 from llm_agent.prompt_templates import SYSTEM_PROMPT
 from llm_agent.tools.predict_tool import PredictTool
+from llm_agent.safety import TRUST_STATEMENTS, CSI_VALUES
 
 
 def _resolve_date(text: str) -> str:
