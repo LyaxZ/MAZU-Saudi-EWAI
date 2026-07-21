@@ -7,11 +7,6 @@ from datetime import datetime
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import numpy as np
-import matplotlib
-matplotlib.use("Agg")
-import matplotlib.pyplot as plt
-from matplotlib.lines import Line2D
-from matplotlib.colors import LinearSegmentedColormap
 import gradio as gr
 
 from llm_agent.agent import MazuAgent
@@ -31,15 +26,6 @@ logging.basicConfig(
     ],
 )
 log = logging.getLogger("MAZU")
-
-# ═══════ 字体 ═══════
-for f in ["Microsoft YaHei", "SimHei", "Noto Sans SC"]:
-    try:
-        plt.rcParams["font.sans-serif"] = [f]
-        plt.rcParams["axes.unicode_minus"] = False
-        break
-    except Exception:
-        pass
 
 # ═══════ CSS ═══════
 CSS = """
@@ -313,21 +299,21 @@ def build_ui():
                         btn = gr.Button("🔍 查询风险地图", variant="primary")
                         info = gr.Markdown("")
                     with gr.Column(scale=3):
-                        img = gr.Plot(label="风险分布图")
+                        img = gr.Plot(label="风险分布图", value=None)
 
                 btn.click(fn=plot_risk_map, inputs=[dtype,date], outputs=[img,info])
 
             # ── Tab 3: 知识图谱 ──
             with gr.TabItem("🕸️ 知识图谱"):
                 kg_btn = gr.Button("🔄 加载知识图谱", variant="primary")
-                kg_html = gr.HTML(label="沙特承灾体网络")
+                kg_html = gr.HTML(value="<p style='color:#999'>点击按钮加载交互式知识图谱</p>")
                 kg_info = gr.Markdown(
                     f"**知识图谱结构**\n\n"
                     f"- 🏙️ {len(CITIES)} 个城市节点 | ✈️ {len(AIRPORTS)} 个机场\n"
                     f"- 🛣️ {len(HIGHWAYS)} 条高速 | 🌊 {len(WADIS)} 条Wadi河道\n"
                     f"- 🚢 6 个港口\n\n"
                     f"> D8流向边基于地形推导，Wadi坐标为近似值\n"
-                    f"> 🖱️ 可拖拽节点、缩放、悬停查看详情")
+                    f"> 🖱️ 加载后可拖拽节点、缩放、悬停查看详情")
                 kg_btn.click(fn=plot_kg, outputs=[kg_html])
 
     return app
