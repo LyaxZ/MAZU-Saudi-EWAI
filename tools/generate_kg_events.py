@@ -1,4 +1,4 @@
-"""生成全部10个教师 Ground Truth 事件的可视化 HTML（下拉切换）"""
+"""生成全部10个 Ground Truth 事件的可视化 HTML（下拉切换）"""
 import sys, os; sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import numpy as np, plotly.graph_objects as go
 from data.loader import load_single_day, load_to_dataframe
@@ -140,7 +140,7 @@ body{{font-family:"Segoe UI","Microsoft YaHei",system-ui,sans-serif;background:#
 .desc{{text-align:center;padding:6px;font-size:12px;color:#64748b;background:#f8fafc}}
 </style></head><body>
 <div class="top">
-<h1>🛰️ MAZU KG — 教师 Ground Truth 灾害事件可视化</h1>
+<h1>🛰️ MAZU KG — Ground Truth 灾害事件可视化</h1>
 <select id="sel" onchange="sw(this.value)">
 {''.join(opts)}
 </select>
