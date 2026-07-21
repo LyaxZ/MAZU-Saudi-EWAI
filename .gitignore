@@ -34,6 +34,7 @@ Thumbs.db
 # models/ 已放开——GPU笔记本训练的模型需同步到旧电脑
 outputs/logs/*
 outputs/*.log
+outputs/*.parquet
 !outputs/models/.gitkeep
 !outputs/logs/.gitkeep
 
