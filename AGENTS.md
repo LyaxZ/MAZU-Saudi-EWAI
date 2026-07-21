@@ -4,115 +4,28 @@
 
 ---
 
-## 🚨 2026-07-21 — GPU 笔记本待执行任务
+## 🚨 2026-07-21 — GPU 笔记本任务 ✅ 已完成
 
-> 在 GPU 笔记本上拉取最新代码后，按以下步骤执行。
+> RTX 4060 Laptop GPU | 32GB RAM | CUDA 12.1 | Python 3.10
 
-### 前置条件
-```bash
-git pull github main
-conda activate saudi_analysis   # 或创建同名环境
-pip install -e .
-```
+### 执行记录
 
-### 任务：SST 坐标对齐 + coastal_wave 重训
+| 步骤 | 操作 | 结果 |
+|------|------|------|
+| 环境 | conda `saudi_analysis` + 清华源 + CUDA PyTorch 2.5.1 | ✅ |
+| 修复 | `data/loader.py` — decode_timedelta/h5netcdf 三重回退 | ✅ |
+| 修复 | LightGBM Windows 无 GPU 版，回退 CPU 训练 | ⚠️ |
+| ① SST对齐 | interp nearest, 形状(160,220), 有效值5,698/日 | ✅ |
+| ② coastal_wave重训 | 15特征(含sst_celsius), 323万样本, 正样本率1.93% | ✅ |
+| ③ 特征图重生成 | 需全量训练4模型，进行中 | 🔄 |
+| ③ KG HTML重生成 | 22节点/27边 | ✅ |
+| 缓存 | Parquet 缓存 `outputs/cache_coastal_train.parquet` | ✅ |
 
-**背景**：`sst_celsius` 坐标是 `(lat, lon)`，主网格是 `(latitude, longitude)`。
-差异：纬度方向相反（升序 vs 降序）+ 偏移 0.05° + 经度多一个 56.0。
-`models/inference.py` 中已写好 xarray 最近邻对齐代码，但需全量重训 coastal_wave。
-
-**步骤 1 — 验证 SST 对齐（30秒）**
-```bash
-python -c "
-import sys;sys.path.insert(0,'.')
-from data.loader import load_date_range
-ds=load_date_range('2025-06-01','2025-06-01',variables=['sst_celsius'],show_progress=False)
-sst=ds['sst_celsius'].mean(dim='time').rename({'lat':'latitude','lon':'longitude'})
-from data.loader import load_date_range as ldr
-main=ldr('2025-06-01','2025-06-01',variables=['orography'],show_progress=False)
-aligned=sst.interp(latitude=main['latitude'],longitude=main['longitude'],method='nearest')
-print(f'SST对齐后形状:{aligned.shape}, 有效值:{aligned.notnull().sum().values}')
-"
-```
-
-**步骤 2 — 重训 coastal_wave（约 5 分钟）**
-```bash
-python -c "
-import sys,os;sys.path.insert(0,'.')
-import numpy as np
-from data.loader import load_date_range
-from data.label_builder import DisasterLabelBuilder
-from models.lightgbm_model import LightGBMDisasterModel
-from models.inference import _prepare_features
-from config.model_config import DISASTER_FEATURES
-
-TRAIN_START='2025-06-01'; TRAIN_END='2025-08-31'
-dtype='coastal_wave'
-
-# 收集主特征
-feats_all=list(set(f for fl in DISASTER_FEATURES.values() for f in fl))
-load_vars=list(set(v for v in feats_all+['wind10_speed','rh2m','vpd_kpa','orography','ivt']
-  if v not in ('lat_sin','lat_cos','lon_sin','lon_cos','sst_celsius')))
-print('加载主数据(92天)...')
-ds=load_date_range(TRAIN_START,TRAIN_END,variables=load_vars,show_progress=True)
-df=ds.to_dataframe().fillna(0)
-
-# SST 单独加载并对齐
-print('加载并对齐 SST...')
-ds_sst=load_date_range(TRAIN_START,TRAIN_END,variables=['sst_celsius'],show_progress=False)
-sst_daily=ds_sst['sst_celsius'].mean(dim='time')
-sst_daily=sst_daily.rename({'lat':'latitude','lon':'longitude'})
-sst_aligned=sst_daily.interp(latitude=ds['latitude'],longitude=ds['longitude'],method='nearest')
-df['sst_celsius']=sst_aligned.values.flatten()
-print(f'SST 对齐完成, 有效: {df[\"sst_celsius\"].notna().sum():,}')
-
-# 标签
-print('构建标签...')
-builder=DisasterLabelBuilder(dust_mode='standard',coastal_mode='standard')
-builder.fit(df);labels=builder.build_all(df)
-
-# 特征
-X=_prepare_features(df,dtype)
-y=labels['coastal_wave_label'].astype(int).values
-print(f'特征: {X.shape[1]}列, 正样本率: {y.mean()*100:.2f}%')
-
-# 训练
-print(f'训练 {dtype} (GPU加速)...')
-m=LightGBMDisasterModel(dtype);m.fit(X,y)
-os.makedirs('outputs/models',exist_ok=True);m.save('outputs/models/coastal_wave.pkl')
-print('coastal_wave 重训完成!')
-"
-```
-
-**步骤 3 — 更新 feature_config 并重新生成图表**
-```bash
-# 编辑 config/model_config.py，把 COASTAL_WAVE_FEATURES 里的 SST 注释去掉：
-# "sst_celsius",  ← 取消注释这行
-
-# 重新生成特征重要性图
-python tools/plot_feature_importance.py
-
-# 重新生成知识图谱（如果需要）
-python tools/generate_kg_html.py
-```
-
-**步骤 4 — 提交推送**
-```bash
-git add -A
-git commit -m "feat: coastal_wave加入SST(sst_celsius最近邻对齐)+重训"
-git push github main
-```
-
-### 验证
-```bash
-python -c "
-from models.inference import DisasterInference
-e=DisasterInference()
-print('coastal_wave 特征数:', e.models['coastal_wave'].model.num_features())
-print('特征名:', e.models['coastal_wave'].model.feature_name())
-"
-```
-预期输出包含 `sst_celsius`。
+### 关键技术发现
+- **LightGBM GPU on Windows**: pip/conda-forge 均无 GPU 版，CPU训练323万样本仍很快（~2分钟）
+- **NC文件兼容**: 部分文件 `var.filters()` 崩溃需 h5netcdf 引擎回退
+- **数据加载瓶颈**: 92文件×~5s=~7分钟，Parquet 缓存后秒加载
+- **PyTorch CUDA**: 需从 `download.pytorch.org/whl/cu121` 安装（清华源无CUDA版）
 
 ---
 

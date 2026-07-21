@@ -86,7 +86,7 @@ def load_single_day(
     if not os.path.exists(filepath):
         raise FileNotFoundError(f"文件不存在: {filepath}")
 
-    ds = xr.open_dataset(filepath)
+    ds = xr.open_dataset(filepath, decode_timedelta=False)
 
     if variables is not None:
         # 只保留存在的变量
@@ -129,7 +129,14 @@ def load_date_range(
     iterator = tqdm(files, desc="加载指标文件") if show_progress else files
     for fp in iterator:
         try:
-            ds = xr.open_dataset(fp)
+            # 三级回退: decode_timedelta=False → 默认解码 → h5netcdf引擎
+            try:
+                ds = xr.open_dataset(fp, decode_timedelta=False)
+            except Exception:
+                try:
+                    ds = xr.open_dataset(fp)
+                except Exception:
+                    ds = xr.open_dataset(fp, engine='h5netcdf')
             if variables is not None:
                 available = [v for v in variables if v in ds.data_vars]
                 ds = ds[available]
