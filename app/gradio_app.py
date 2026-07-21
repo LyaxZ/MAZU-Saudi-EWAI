@@ -58,20 +58,18 @@ footer { display: none !important; }
 """
 
 # ═══════ 工具函数 ═══════
-
-def fig_to_array(fig):
-    """Matplotlib figure → RGBA numpy array"""
-    fig.canvas.draw()
-    arr = np.array(fig.canvas.buffer_rgba())
-    plt.close(fig)
-    return arr
-
-
 DISASTER_META = {
     "flash_flood": ("暴雨山洪", "Reds"),
     "extreme_heat": ("极端高温", "OrRd"),
     "dust_wind": ("沙尘强风", "YlOrBr"),
     "coastal_wave": ("沿海风浪", "Blues"),
+}
+
+COLOR_SCALES = {
+    "Reds": [[0,"#fff5f0"],[.25,"#fc9272"],[.5,"#ef3b2d"],[.75,"#a50f15"]],
+    "OrRd": [[0,"#fff7ec"],[.25,"#fdbb84"],[.5,"#ef6548"],[.75,"#7f0000"]],
+    "YlOrBr": [[0,"#ffffd4"],[.25,"#febd5a"],[.5,"#f77f00"],[.75,"#662506"]],
+    "Blues": [[0,"#f7fbff"],[.25,"#9ecae1"],[.5,"#3182bd"],[.75,"#08519c"]],
 }
 
 _engine = None
@@ -82,10 +80,11 @@ def get_engine():
         _engine = DisasterInference()
     return _engine
 
-# ═══════ 灾害地图 ═══════
+# ═══════ 灾害地图（plotly 交互式） ═══════
 
 def plot_risk_map(disaster_type, date_str):
-    """生成沙特灾害风险热力图 → numpy array"""
+    """交互式风险热力图 → plotly Figure"""
+    import plotly.graph_objects as go
     from data.loader import load_to_dataframe
     engine = get_engine()
     name, cmap_name = DISASTER_META[disaster_type]
@@ -100,96 +99,138 @@ def plot_risk_map(disaster_type, date_str):
         result = engine.predict(df, disaster_type)
     except Exception as e:
         log.error(f"地图加载失败: {e}")
-        return None, f"日期 {date_str} 数据加载失败: {e}"
+        return go.Figure(), f"加载失败: {e}"
 
-    proba, lat, lon = result["proba"], result["lat"], result["lon"]
+    proba, lat_arr, lon_arr = result["proba"], result["lat"], result["lon"]
     threshold = result["threshold"]
 
+    # 构建 160×220 网格
     n_lat, n_lon = 160, 220
-    lats_u = np.linspace(32.0, 16.0, n_lat)
+    lats_u = np.linspace(16.0, 32.0, n_lat)
     lons_u = np.linspace(34.0, 56.0, n_lon)
     grid = np.full((n_lat, n_lon), np.nan)
-    for p, la, lo in zip(proba, lat, lon):
-        i = np.argmin(np.abs(lats_u - la))
-        j = np.argmin(np.abs(lons_u - lo))
-        grid[i, j] = p
+    for p, la, lo in zip(proba, lat_arr, lon_arr):
+        grid[int(round((la - 16) / 0.1)), int(round((lo - 34) / 0.1))] = p
 
-    fig, ax = plt.subplots(figsize=(12, 10))
-    from matplotlib import colormaps
-    cmap = colormaps[cmap_name].copy()
-    cmap.set_bad("#f0f0f0")
-    ax.pcolormesh(lons_u, lats_u, grid, cmap=cmap, vmin=0, vmax=1, shading="auto")
+    # 热力图
+    fig = go.Figure()
+    fig.add_trace(go.Heatmap(
+        z=grid, x=lons_u, y=lats_u,
+        colorscale=COLOR_SCALES.get(cmap_name, "Reds"),
+        zmin=0, zmax=1,
+        colorbar_title="风险概率",
+        hovertemplate="经度: %{x:.1f}°E<br>纬度: %{y:.1f}°N<br>风险: %{z:.3f}<extra></extra>",
+        name="风险概率",
+    ))
 
+    # 城市标注
+    city_lats, city_lons, city_names = [], [], []
     for c in CITIES:
         if 16 <= c["lat"] <= 32 and 34 <= c["lon"] <= 56:
-            ax.plot(c["lon"], c["lat"], "ko", markersize=3)
-            ax.text(c["lon"]+.15, c["lat"]+.15, c["name"].split("(")[0].strip(),
-                    fontsize=6, color="#333", alpha=.8)
+            city_lats.append(c["lat"]); city_lons.append(c["lon"])
+            city_names.append(c["name"].split("(")[0].strip())
+    fig.add_trace(go.Scatter(
+        x=city_lons, y=city_lats, mode="markers+text",
+        text=city_names, textposition="top center",
+        textfont=dict(size=8, color="#333"),
+        marker=dict(size=5, color="black"), name="城市",
+        hovertemplate="%{text}<extra></extra>",
+    ))
+
+    # 高速路网
     for h in HIGHWAYS:
-        ax.plot([p[1] for p in h["path"]], [p[0] for p in h["path"]],
-                "gray", lw=.8, alpha=.4, ls="--")
+        fig.add_trace(go.Scatter(
+            x=[p[1] for p in h["path"]], y=[p[0] for p in h["path"]],
+            mode="lines", line=dict(color="gray", width=0.8, dash="dash"),
+            opacity=0.4, showlegend=False,
+            hoverinfo="text", hovertext=h["name"],
+        ))
+
+    # Wadi
+    wadi_lats, wadi_lons, wadi_names = [], [], []
     for w in WADIS:
         if 16 <= w["lat"] <= 32 and 34 <= w["lon"] <= 56:
-            ax.plot(w["lon"], w["lat"], "D", color="blue", ms=4, alpha=.5)
+            wadi_lats.append(w["lat"]); wadi_lons.append(w["lon"])
+            wadi_names.append(f"{w['name']}({w['length_km']}km)")
+    fig.add_trace(go.Scatter(
+        x=wadi_lons, y=wadi_lats, mode="markers",
+        marker=dict(symbol="diamond", size=8, color="#2ecc71", opacity=0.6),
+        name="Wadi河道", hovertext=wadi_names, hoverinfo="text",
+    ))
 
     n_high, pct = result["n_high"], result["high_pct"]
-    ax.set_title(f"{date_str} {name} 风险分布 | 高风险:{n_high:,}({pct}%) | "
-                 f"均值:{result['mean_risk']:.3f} | 阈值:{threshold}",
-                 fontsize=12, fontweight="bold")
-    ax.set_xlabel("经度"); ax.set_ylabel("纬度")
-    ax.set_xlim(34, 56); ax.set_ylim(16, 32)
-    fig.colorbar(ax.collections[0], ax=ax, shrink=.75).set_label("风险概率", fontsize=9)
-    plt.tight_layout()
-
+    fig.update_layout(
+        title=dict(text=f"{date_str} {name} 风险分布 | "
+                   f"高风险:{n_high:,}({pct}%) | 均值:{result['mean_risk']:.3f}",
+                   font=dict(size=14)),
+        xaxis=dict(title="经度 (°E)", range=[34, 56], constrain="domain"),
+        yaxis=dict(title="纬度 (°N)", range=[16, 32], scaleanchor="x", scaleratio=1),
+        height=600, margin=dict(l=50, r=30, t=50, b=50),
+        hovermode="closest",
+    )
+    log.info(f"地图生成完毕")
     info = f"{date_str} {name}: 高风险 {n_high:,} 格点 ({pct}%)"
-    log.info(f"地图生成完毕: {info}")
-    return fig_to_array(fig), info
+    return fig, info
 
-# ═══════ 知识图谱 ═══════
+
+# ═══════ 知识图谱（pyvis 交互式） ═══════
 
 def plot_kg():
-    """知识图谱 → numpy array"""
-    log.info("生成知识图谱...")
-    fig, ax = plt.subplots(figsize=(12, 10))
+    """交互式网络图 → HTML 字符串"""
+    from pyvis.network import Network
 
+    log.info("生成交互式知识图谱...")
+    net = Network(height="600px", width="100%", bgcolor="#ffffff",
+                  font_color="#333333", directed=False)
+    net.repulsion(node_distance=150, spring_length=200)
+
+    # 经纬度→画布坐标映射
+    def to_xy(lon, lat):
+        return int((lon - 34) * 50), int((32 - lat) * 50)
+
+    # 城市节点
     for c in CITIES:
-        ax.scatter(c["lon"], c["lat"], c="#e74c3c", s=c["pop"]/50000,
-                   alpha=.8, edgecolors="white", lw=.5, zorder=3)
-        ax.text(c["lon"]+.15, c["lat"]+.15, c["name"].split("(")[0].strip(),
-                fontsize=5, alpha=.7, zorder=3)
+        x, y = to_xy(c["lon"], c["lat"])
+        size = np.clip(c["pop"] / 50000, 8, 40)
+        net.add_node(c["name"].split("(")[0].strip(),
+                     label=c["name"].split("(")[0].strip(),
+                     title=f"{c['name']}<br>人口: {c['pop']:,}<br>类型: {c['type']}",
+                     color="#e74c3c", size=size * 1.5, x=x, y=y,
+                     physics=False)
 
+    # 机场节点
     for a in AIRPORTS:
-        ax.scatter(a["lon"], a["lat"], marker="^", c="#3498db", s=80,
-                   alpha=.9, edgecolors="white", zorder=3)
-        ax.text(a["lon"]+.2, a["lat"]+.1,
-                a["name"].split("(")[-1].replace(")","").strip(),
-                fontsize=5, color="#3498db", alpha=.8)
+        x, y = to_xy(a["lon"], a["lat"])
+        name = a["name"].split("(")[-1].replace(")", "").strip()
+        net.add_node(f"✈{name}", label=name,
+                     title=f"{a['name']}<br>城市: {a.get('city','')}",
+                     color="#3498db", size=15, shape="triangle",
+                     x=x, y=y, physics=False)
 
+    # Wadi节点
     for w in WADIS:
         if 16 <= w["lat"] <= 32 and 34 <= w["lon"] <= 56:
-            ax.plot(w["lon"], w["lat"], "D", color="#2ecc71",
-                    ms=w["length_km"]/15, alpha=.6, zorder=2)
+            x, y = to_xy(w["lon"], w["lat"])
+            net.add_node(w["name"], label=w["name"],
+                         title=f"{w['name']}<br>长度: {w['length_km']}km<br>影响: {w.get('risk_city','')}",
+                         color="#2ecc71", size=w["length_km"] / 8,
+                         shape="diamond", x=x, y=y, physics=False)
 
+    # 高速作为边
     for h in HIGHWAYS:
-        ax.plot([p[1] for p in h["path"]], [p[0] for p in h["path"]],
-                "#bdc3c7", lw=.6, alpha=.5, zorder=1)
+        path = h["path"]
+        for i in range(len(path) - 1):
+            n1, n2 = f"h_{h['name'][:6]}_{i}", f"h_{h['name'][:6]}_{i+1}"
+            x1, y1 = to_xy(path[i][1], path[i][0])
+            x2, y2 = to_xy(path[i+1][1], path[i+1][0])
+            net.add_node(n1, hidden=True, x=x1, y=y1, size=1, physics=False)
+            net.add_node(n2, hidden=True, x=x2, y=y2, size=1, physics=False)
+            net.add_edge(n1, n2, color="#bdc3c7", width=1)
 
-    ax.set_xlim(34, 56); ax.set_ylim(16, 32)
-    ax.set_xlabel("经度"); ax.set_ylabel("纬度")
-    ax.set_title(f"MAZU 知识图谱 — 承灾体网络 | 城市{len(CITIES)} | "
-                 f"机场{len(AIRPORTS)} | 高速{len(HIGHWAYS)} | Wadi{len(WADIS)}",
-                 fontsize=12, fontweight="bold")
-    ax.set_aspect("equal")
-    ax.legend(handles=[
-        Line2D([0],[0],marker="o",color="w",markerfacecolor="#e74c3c",ms=8,label="城市"),
-        Line2D([0],[0],marker="^",color="w",markerfacecolor="#3498db",ms=8,label="机场"),
-        Line2D([0],[0],marker="D",color="w",markerfacecolor="#2ecc71",ms=8,label="Wadi"),
-        Line2D([0],[0],color="#bdc3c7",lw=1,label="高速"),
-    ], loc="lower right", fontsize=8)
-    plt.tight_layout()
-
+    html = net.generate_html()
+    # 注入到 iframe 供 gr.HTML 显示
     log.info("图谱生成完毕")
-    return fig_to_array(fig)
+    return f'<iframe srcdoc="{html.replace(chr(34), "&quot;")}" width="100%" height="600" frameborder="0"></iframe>'
 
 # ═══════ UI ═══════
 
@@ -272,21 +313,22 @@ def build_ui():
                         btn = gr.Button("🔍 查询风险地图", variant="primary")
                         info = gr.Markdown("")
                     with gr.Column(scale=3):
-                        img = gr.Image(label="风险分布图", type="numpy")
+                        img = gr.Plot(label="风险分布图")
 
                 btn.click(fn=plot_risk_map, inputs=[dtype,date], outputs=[img,info])
 
             # ── Tab 3: 知识图谱 ──
             with gr.TabItem("🕸️ 知识图谱"):
                 kg_btn = gr.Button("🔄 加载知识图谱", variant="primary")
-                kg_img = gr.Image(label="沙特承灾体网络", type="numpy")
+                kg_html = gr.HTML(label="沙特承灾体网络")
                 kg_info = gr.Markdown(
                     f"**知识图谱结构**\n\n"
                     f"- 🏙️ {len(CITIES)} 个城市节点 | ✈️ {len(AIRPORTS)} 个机场\n"
                     f"- 🛣️ {len(HIGHWAYS)} 条高速 | 🌊 {len(WADIS)} 条Wadi河道\n"
                     f"- 🚢 6 个港口\n\n"
-                    f"> D8流向边基于地形推导，Wadi坐标为近似值")
-                kg_btn.click(fn=plot_kg, outputs=[kg_img])
+                    f"> D8流向边基于地形推导，Wadi坐标为近似值\n"
+                    f"> 🖱️ 可拖拽节点、缩放、悬停查看详情")
+                kg_btn.click(fn=plot_kg, outputs=[kg_html])
 
     return app
 
