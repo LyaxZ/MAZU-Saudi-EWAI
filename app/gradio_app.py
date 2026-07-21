@@ -17,20 +17,57 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(me
 log = logging.getLogger("MAZU")
 
 CSS = """
-.gradio-container{max-width:100%!important;margin:0!important;padding:0!important}
-.main-header{text-align:center;padding:16px 0 8px;background:linear-gradient(135deg,#1e1b4b,#312e81);color:#fff}
-.main-header h1{font-size:24px;margin:0;letter-spacing:2px}
-.main-header p{font-size:13px;color:#a5b4fc;margin:4px 0 0}
-.tabs{margin-top:0!important;border-bottom:2px solid #e2e8f0}
-.tabs button{font-size:15px!important;font-weight:600!important;padding:12px 32px!important}
-.tabs button.selected{color:#4f46e5!important;border-bottom:3px solid #4f46e5!important}
-#chatbot{border-radius:0}
-.input-box{background:#fff;border-top:1px solid #e2e8f0;padding:14px 20px}
-.input-box textarea{border:1px solid #e2e8f0!important;border-radius:12px!important;padding:12px 16px!important;font-size:15px!important}
-.send-btn{background:#4f46e5!important;color:#fff!important;font-weight:600!important;padding:12px 28px!important;border-radius:10px!important;border:none!important}
-.send-btn:hover{background:#4338ca!important}
-.source-cite{font-size:11px;color:#94a3b8;margin-top:8px;padding-top:6px;border-top:1px solid #e2e8f0}
-.control-panel{background:#fff;border-radius:12px;padding:16px;box-shadow:0 1px 3px rgba(0,0,0,.08);margin:12px}
+*{box-sizing:border-box}
+body{background:#f1f5f9!important;font-family:'Segoe UI',system-ui,-apple-system,sans-serif}
+.gradio-container{max-width:960px!important;margin:20px auto!important;padding:0 16px!important}
+
+/* 顶部标题 */
+.main-header{text-align:center;padding:28px 20px 20px;margin-bottom:4px;
+  background:#fff;border-radius:16px;box-shadow:0 1px 4px rgba(0,0,0,.06)}
+.main-header h1{font-size:22px;margin:0;color:#1e293b;font-weight:700;letter-spacing:1px}
+.main-header p{font-size:13px;color:#64748b;margin:6px 0 0}
+
+/* 标签页 */
+.tabs{border:none!important;background:transparent!important}
+.tabs > .tab-nav{background:#fff!important;border-radius:14px 14px 0 0!important;
+  padding:4px 8px 0!important;box-shadow:0 1px 4px rgba(0,0,0,.06);
+  display:flex;gap:2px}
+.tabs > .tab-nav button{font-size:14px!important;font-weight:600!important;
+  padding:10px 24px!important;border-radius:10px 10px 0 0!important;
+  border:none!important;background:transparent!important;color:#64748b!important;
+  margin:0!important;transition:all .2s}
+.tabs > .tab-nav button:hover{color:#334155!important;background:#f1f5f9!important}
+.tabs > .tab-nav button.selected{color:#4f46e5!important;background:#eef2ff!important;
+  box-shadow:inset 0 -2px 0 #4f46e5}
+.tabs > .tabitem{background:#fff;border-radius:0 0 14px 14px;padding:0;
+  box-shadow:0 1px 4px rgba(0,0,0,.06)}
+
+/* 对话框 */
+#chatbot{border-radius:14px!important;min-height:460px}
+#chatbot > div{padding:20px!important}
+.input-box{background:#fff;border-top:1px solid #f1f5f9;padding:14px 20px;border-radius:0 0 14px 14px}
+.input-box textarea{border:2px solid #e2e8f0!important;border-radius:12px!important;
+  padding:12px 16px!important;font-size:15px!important;
+  transition:border-color .2s;outline:none!important}
+.input-box textarea:focus{border-color:#4f46e5!important;box-shadow:0 0 0 3px rgba(79,70,229,.1)!important}
+.send-btn{background:#4f46e5!important;color:#fff!important;font-weight:600!important;
+  padding:12px 28px!important;border-radius:10px!important;border:none!important;
+  transition:all .2s}
+.send-btn:hover{background:#4338ca!important;transform:translateY(-1px);box-shadow:0 2px 8px rgba(79,70,229,.3)}
+
+/* 来源引用 */
+.source-cite{font-size:11px;color:#94a3b8;margin-top:8px;padding-top:6px;border-top:1px solid #f1f5f9}
+
+/* 地图控制面板 */
+.control-panel{background:#f8fafc;border-radius:14px;padding:20px;border:1px solid #e2e8f0}
+.control-panel h3{font-size:15px;color:#334155;margin:0 0 12px}
+.control-panel label{font-size:12px!important;font-weight:600!important;color:#64748b!important;margin-bottom:2px!important}
+
+/* 通用圆角卡片 */
+.card{background:#fff;border-radius:14px;padding:24px;box-shadow:0 1px 4px rgba(0,0,0,.06);margin-bottom:16px}
+
+/* 加载占位 */
+.loading-placeholder{color:#94a3b8;text-align:center;padding:60px;font-size:15px}
 """
 
 # === 全局 ===
@@ -114,7 +151,7 @@ def plot_risk_map(disaster_type, date_str, risk_min, risk_max):
              f"| 平均风险 | {result['mean_risk']:.3f} |\n"
              f"| 最高风险 | {result['max_risk']:.3f} |\n"
              f"| 模型阈值 | {th} |")
-    return fig, "", stats
+    return fig, stats
 
 
 # === 知识图谱 ===
@@ -186,15 +223,15 @@ def plot_kg():
 
 # === UI ===
 def build_ui():
-    with gr.Blocks(title="MAZU 沙特多灾种预警智能体", css=CSS) as app:
+    with gr.Blocks(title="MAZU 沙特多灾种预警智能体") as app:
         gr.HTML("""<div class="main-header">
             <h1>MAZU 沙特多灾种预警智能体</h1>
             <p>暴雨山洪 · 极端高温 · 沙尘强风 · 沿海风浪 ｜ LightGBM · 知识图谱 · LLM Agent</p>
         </div>""")
 
-        with gr.Tabs(elem_classes=["tabs"]) as tabs:
+        with gr.Tabs(elem_classes=["tabs"]):
             # ===== Tab 1: 对话 =====
-            with gr.TabItem("💬 智能对话", id="chat"):
+            with gr.TabItem("💬 智能对话", id="chat", elem_classes=["tabitem"]):
                 chatbot = gr.Chatbot(label="", height=520, elem_id="chatbot", show_label=False)
                 with gr.Row(elem_classes=["input-box"]):
                     msg = gr.Textbox(placeholder="输入问题，如：明天利雅得会有热浪吗？", scale=10, container=False, show_label=False, max_lines=3)
@@ -229,7 +266,7 @@ def build_ui():
                 gr.Examples(examples=["2025年8月15日沙特有山洪风险吗？","明天利雅得地区会不会有热浪？","红海沿岸有没有风浪预警？","看看8月20日的沙尘暴预测"], inputs=msg)
 
             # ===== Tab 2: 地图 =====
-            with gr.TabItem("🗺️ 灾害地图", id="map"):
+            with gr.TabItem("🗺️ 灾害地图", id="map", elem_classes=["tabitem"]):
                 with gr.Row():
                     with gr.Column(scale=4):
                         map_plot = gr.Plot(label="")
@@ -246,15 +283,15 @@ def build_ui():
                         btn = gr.Button("🔍 更新地图", variant="primary")
                         stats = gr.Markdown("")
 
-                btn.click(fn=plot_risk_map, inputs=[dtype,date,risk_min,risk_max], outputs=[map_plot,stats,stats])
+                btn.click(fn=plot_risk_map, inputs=[dtype,date,risk_min,risk_max], outputs=[map_plot,stats])
 
             # ===== Tab 3: 知识图谱 =====
-            with gr.TabItem("🕸️ 知识图谱", id="kg"):
+            with gr.TabItem("🕸️ 知识图谱", id="kg", elem_classes=["tabitem"]):
                 gr.Markdown("### 多层级知识网络 — 气象因子 → 灾害类型 → 基础设施关联")
                 kg_html = gr.HTML(value="<p style='color:#94a3b8;text-align:center;padding:60px;font-size:16px'>点击下方按钮加载交互式知识图谱</p>")
                 with gr.Row():
                     kg_btn = gr.Button("🔄 加载知识图谱", variant="primary", scale=1)
-                    gr.Markdown("🖱️ 可拖拽节点、缩放、悬停查看详情 | 实线=直接影响，虚线=间接关联", scale=3)
+                    gr.Markdown("🖱️ 可拖拽节点、缩放、悬停查看详情 | 实线=直接影响，虚线=间接关联")
                 kg_btn.click(fn=plot_kg, outputs=[kg_html])
 
     return app
@@ -263,7 +300,7 @@ def build_ui():
 def launch_app(share=False, **kw):
     kw.setdefault("server_name","0.0.0.0"); kw.setdefault("server_port",7860)
     log.info("MAZU Web 启动")
-    app = build_ui(); app.launch(share=share, **kw)
+    app = build_ui(); app.launch(share=share, css=CSS, **kw)
 
 if __name__ == "__main__":
     import argparse
