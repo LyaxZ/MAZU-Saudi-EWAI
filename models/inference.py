@@ -449,25 +449,35 @@ class DisasterInference:
         from data.loader import load_date_range
 
         feats = DISASTER_FEATURES[disaster_type]
+        # SST 需要单独处理（坐标/维度不兼容），不和其他变量一起加载
         load_vars = [f for f in feats
-                     if f not in ("lat_sin", "lat_cos", "lon_sin", "lon_cos")]
+                     if f not in ("lat_sin", "lat_cos", "lon_sin", "lon_cos", "sst_celsius")]
 
         try:
             ds = load_date_range(date, date, variables=load_vars, show_progress=False)
             fallback_note = ""
         except (FileNotFoundError, ValueError, OSError):
-            # 回退到 2025 年同月同日
             from datetime import datetime
             try:
                 dt = datetime.strptime(date, "%Y-%m-%d")
                 fallback_date = f"2025-{dt.month:02d}-{dt.day:02d}"
             except ValueError:
                 raise FileNotFoundError(f"无法解析日期: {date}，且 2025 回退也失败")
-
             ds = load_date_range(fallback_date, fallback_date, variables=load_vars, show_progress=False)
             fallback_note = f"（注：{date} 无数据，已使用 2025 年同日 {fallback_date} 作为参考）"
 
         df = ds.to_dataframe().fillna(0)
+
+        # 如果有 sst_celsius 特征，单独加载并对齐
+        if "sst_celsius" in feats:
+            try:
+                ds_sst = load_date_range(date, date, variables=['sst_celsius'], show_progress=False)
+            except Exception:
+                ds_sst = load_date_range(fallback_date, fallback_date, variables=['sst_celsius'], show_progress=False)
+            sst_daily = ds_sst['sst_celsius'].mean(dim='time')
+            sst_daily = sst_daily.rename({'lat': 'latitude', 'lon': 'longitude'})
+            sst_aligned = sst_daily.interp(latitude=ds['latitude'], longitude=ds['longitude'], method='nearest')
+            df['sst_celsius'] = sst_aligned.values.flatten()
         result = self.predict(df, disaster_type)
 
         if fallback_note:
