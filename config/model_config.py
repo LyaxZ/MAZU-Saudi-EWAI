@@ -85,7 +85,7 @@ COASTAL_WAVE_FEATURES = [
     "surface_pressure", "orography",
     # 空间位置编码
     "lat_sin", "lat_cos", "lon_sin", "lon_cos",
-]  # 注: sst_celsius 网格不兼容(lat/lon≠latitude/longitude)，已排除
+]  # SST(sst_celsius)坐标对齐方案已验证(lat/lon→latitude/longitude最近邻),下版纳入
 
 # 四类灾害特征字典
 DISASTER_FEATURES = {

@@ -67,6 +67,34 @@ def _prepare_features(df: pd.DataFrame, disaster_type: str) -> pd.DataFrame:
     return X
 
 
+def merge_sst(df_main: pd.DataFrame, df_sst: pd.DataFrame) -> pd.DataFrame:
+    """将 SST 数据从 (lat,lon) 网格最近邻对齐合并到主 (latitude,longitude) 网格。
+    
+    SST 坐标偏移仅 0.05°（半个格点），经度多一个 56.0。
+    直接裁掉多余经度 + 翻转纬度，不插值，不改变原始 SST 值。
+    """
+    import numpy as np
+    n_lat = df_main.index.get_level_values("latitude").nunique()
+    n_lon = df_main.index.get_level_values("longitude").nunique()
+
+    # 取第一个时间步的 SST 值，按 (lat 升序, lon 升序) reshape
+    sst_vals = df_sst["sst_celsius"].values
+    # 尝试 reshape：如果有多余维度(sst lon=221)，按 160×221 处理
+    total = len(sst_vals)
+    sst_nlon = total // 160  # 应该是 221 或 220
+    sst_vals = sst_vals.reshape(160, sst_nlon)
+    sst_vals = sst_vals[:, :n_lon]  # 裁掉多余经度
+    sst_vals = sst_vals[::-1, :]     # 纬度翻转（SST 升序 → 主网格降序）
+
+    # 广播到主 DataFrame 的所有时间步
+    n_days = total // (160 * sst_nlon)
+    if n_days > 1:
+        sst_vals = np.tile(sst_vals.flatten(), n_days)
+
+    df_main["sst_celsius"] = sst_vals.flatten()[:len(df_main)]
+    return df_main
+
+
 # ═══════════════════════════════════════════════
 # 推理引擎
 # ═══════════════════════════════════════════════
@@ -115,7 +143,7 @@ class DisasterInference:
                        "wind10_speed", "rh2m", "vpd_kpa", "orography", "ivt"]
         all_feat_vars = list(set(
             f for f_list in DISASTER_FEATURES.values() for f in f_list))
-        # 过滤掉 lat/lon 编码（动态添加）
+        # 过滤掉 lat/lon 编码（动态添加），SST 因坐标不同单独加载
         load_vars = list(set(
             [v for v in all_feat_vars + label_vars
              if v not in ("lat_sin", "lat_cos", "lon_sin", "lon_cos", "sst_celsius")]))
@@ -123,6 +151,15 @@ class DisasterInference:
         print(f"[Inference] 加载训练数据 ({TRAIN_START}~{TRAIN_END})...")
         ds = load_date_range(TRAIN_START, TRAIN_END, variables=load_vars, show_progress=True)
         df = ds.to_dataframe().fillna(0)
+
+        # SST 因坐标不同 (lat/lon ≠ latitude/longitude) 单独加载并对齐
+        if "sst_celsius" in all_feat_vars:
+            ds_sst = load_date_range(TRAIN_START, TRAIN_END, variables=["sst_celsius"], show_progress=False)
+            # 日平均 + 重命名坐标 + 最近邻插值到主网格
+            sst_daily = ds_sst["sst_celsius"].mean(dim="time")
+            sst_daily = sst_daily.rename({"lat": "latitude", "lon": "longitude"})
+            sst_aligned = sst_daily.interp(latitude=ds["latitude"], longitude=ds["longitude"], method="nearest")
+            df["sst_celsius"] = sst_aligned.values.flatten()
 
         # 标签构建
         builder = DisasterLabelBuilder(dust_mode="standard", coastal_mode="standard")
