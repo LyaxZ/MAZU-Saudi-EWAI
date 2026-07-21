@@ -22,30 +22,30 @@ body{background:#f1f5f9!important;font-family:'Segoe UI',system-ui,-apple-system
 .gradio-container{max-width:960px!important;margin:20px auto!important;padding:0 16px!important}
 
 /* 顶部标题 */
-.main-header{text-align:center;padding:28px 20px 20px;margin-bottom:4px;
+.main-header{text-align:center;padding:28px 20px 20px;margin-bottom:12px;
   background:#fff;border-radius:16px;box-shadow:0 1px 4px rgba(0,0,0,.06)}
 .main-header h1{font-size:22px;margin:0;color:#1e293b;font-weight:700;letter-spacing:1px}
 .main-header p{font-size:13px;color:#64748b;margin:6px 0 0}
 
-/* 标签页 */
-.tabs{border:none!important;background:transparent!important}
-.tabs > .tab-nav{background:#fff!important;border-radius:14px 14px 0 0!important;
-  padding:4px 8px 0!important;box-shadow:0 1px 4px rgba(0,0,0,.06);
-  display:flex;gap:2px}
-.tabs > .tab-nav button{font-size:14px!important;font-weight:600!important;
-  padding:10px 24px!important;border-radius:10px 10px 0 0!important;
-  border:none!important;background:transparent!important;color:#64748b!important;
-  margin:0!important;transition:all .2s}
-.tabs > .tab-nav button:hover{color:#334155!important;background:#f1f5f9!important}
-.tabs > .tab-nav button.selected{color:#4f46e5!important;background:#eef2ff!important;
-  box-shadow:inset 0 -2px 0 #4f46e5}
-.tabs > .tabitem{background:#fff;border-radius:0 0 14px 14px;padding:0;
-  box-shadow:0 1px 4px rgba(0,0,0,.06)}
+/* 导航标签按钮 */
+.tab-nav-row{background:#fff;border-radius:14px;padding:6px;margin-bottom:12px;
+  box-shadow:0 1px 4px rgba(0,0,0,.06);display:flex;gap:4px}
+.tab-nav-row .wrap{display:flex!important;gap:4px!important;flex-wrap:nowrap!important}
+.tab-nav-row label{flex:1;text-align:center;padding:10px 0!important;
+  border-radius:10px!important;font-weight:600!important;font-size:14px!important;
+  cursor:pointer!important;transition:all .2s;margin:0!important;
+  background:transparent!important;color:#64748b!important;border:none!important}
+.tab-nav-row label:hover{background:#f1f5f9!important;color:#334155!important}
+.tab-nav-row label.selected{background:#eef2ff!important;color:#4f46e5!important;
+  box-shadow:0 1px 3px rgba(79,70,229,.15)}
+
+/* 内容面板 */
+.tab-panel{background:#fff;border-radius:14px;box-shadow:0 1px 4px rgba(0,0,0,.06);overflow:hidden}
 
 /* 对话框 */
 #chatbot{border-radius:14px!important;min-height:460px}
 #chatbot > div{padding:20px!important}
-.input-box{background:#fff;border-top:1px solid #f1f5f9;padding:14px 20px;border-radius:0 0 14px 14px}
+.input-box{padding:14px 20px}
 .input-box textarea{border:2px solid #e2e8f0!important;border-radius:12px!important;
   padding:12px 16px!important;font-size:15px!important;
   transition:border-color .2s;outline:none!important}
@@ -62,9 +62,6 @@ body{background:#f1f5f9!important;font-family:'Segoe UI',system-ui,-apple-system
 .control-panel{background:#f8fafc;border-radius:14px;padding:20px;border:1px solid #e2e8f0}
 .control-panel h3{font-size:15px;color:#334155;margin:0 0 12px}
 .control-panel label{font-size:12px!important;font-weight:600!important;color:#64748b!important;margin-bottom:2px!important}
-
-/* 通用圆角卡片 */
-.card{background:#fff;border-radius:14px;padding:24px;box-shadow:0 1px 4px rgba(0,0,0,.06);margin-bottom:16px}
 
 /* 加载占位 */
 .loading-placeholder{color:#94a3b8;text-align:center;padding:60px;font-size:15px}
@@ -229,70 +226,83 @@ def build_ui():
             <p>暴雨山洪 · 极端高温 · 沙尘强风 · 沿海风浪 ｜ LightGBM · 知识图谱 · LLM Agent</p>
         </div>""")
 
-        with gr.Tabs(elem_classes=["tabs"]):
-            # ===== Tab 1: 对话 =====
-            with gr.TabItem("💬 智能对话", id="chat", elem_classes=["tabitem"]):
-                chatbot = gr.Chatbot(label="", height=520, elem_id="chatbot", show_label=False)
-                with gr.Row(elem_classes=["input-box"]):
-                    msg = gr.Textbox(placeholder="输入问题，如：明天利雅得会有热浪吗？", scale=10, container=False, show_label=False, max_lines=3)
-                    send = gr.Button("发送", variant="primary", scale=1, elem_classes=["send-btn"])
+        # 用 Radio + visible 替代有 bug 的 gr.Tabs（Gradio 6.14 兼容）
+        tab_radio = gr.Radio(
+            choices=[("💬 智能对话", "chat"), ("🗺️ 灾害地图", "map"), ("🕸️ 知识图谱", "kg")],
+            value="chat", label=None, interactive=True, elem_classes=["tab-nav-row"])
 
-                _agent = [None]
-                def get_agent():
-                    if _agent[0] is None: _agent[0] = MazuAgent(verbose=False)
-                    return _agent[0]
+        # ===== Tab 1: 对话 =====
+        with gr.Column(visible=True, elem_classes=["tab-panel"]) as panel_chat:
+            chatbot = gr.Chatbot(label="", height=520, elem_id="chatbot", show_label=False)
+            with gr.Row(elem_classes=["input-box"]):
+                msg = gr.Textbox(placeholder="输入问题，如：明天利雅得会有热浪吗？", scale=10, container=False, show_label=False, max_lines=3)
+                send = gr.Button("发送", variant="primary", scale=1, elem_classes=["send-btn"])
 
-                def respond(message, history):
-                    history = history or []
-                    yield history+[{"role":"user","content":message},{"role":"assistant","content":"⏳"}]
-                    full, last = "", ""
-                    for chunk in get_agent().chat_stream(message):
-                        full += chunk
-                        tools = re.findall(r'🔧\s*(\S+)\.\.\.', full)
-                        if tools and tools[-1]!=last:
-                            last=tools[-1]; n={"predict_risk":"获取风险预测","query_kg_impact":"分析影响链","search_similar_cases":"检索案例"}
-                            yield history+[{"role":"user","content":message},{"role":"assistant","content":f"⏳ {n.get(last,'处理中')}..."}]
-                    clean = re.sub(r'\n?🔧[^\n]*\n','\n',full); clean = re.sub(r'\n?✅[^\n]*\n','\n',clean)
-                    clean = re.sub(r'^\s*---\s*\n+','',clean)
-                    main,src = clean,""
-                    if "\n---\n" in clean: parts=clean.rsplit("\n---\n",1); main,src=parts[0].strip(),parts[1].strip()
-                    final = main
-                    if src: final += f'\n<div class="source-cite">{src.replace(chr(10)," · ")}</div>'
-                    final = re.sub(r'\n{3,}','\n\n',final)
-                    yield history+[{"role":"user","content":message},{"role":"assistant","content":final}]
+            _agent = [None]
+            def get_agent():
+                if _agent[0] is None: _agent[0] = MazuAgent(verbose=False)
+                return _agent[0]
 
-                send.click(fn=respond,inputs=[msg,chatbot],outputs=[chatbot]).then(fn=lambda:"",outputs=[msg])
-                msg.submit(fn=respond,inputs=[msg,chatbot],outputs=[chatbot]).then(fn=lambda:"",outputs=[msg])
-                gr.Examples(examples=["2025年8月15日沙特有山洪风险吗？","明天利雅得地区会不会有热浪？","红海沿岸有没有风浪预警？","看看8月20日的沙尘暴预测"], inputs=msg)
+            def respond(message, history):
+                history = history or []
+                yield history+[{"role":"user","content":message},{"role":"assistant","content":"⏳"}]
+                full, last = "", ""
+                for chunk in get_agent().chat_stream(message):
+                    full += chunk
+                    tools = re.findall(r'🔧\s*(\S+)\.\.\.', full)
+                    if tools and tools[-1]!=last:
+                        last=tools[-1]; n={"predict_risk":"获取风险预测","query_kg_impact":"分析影响链","search_similar_cases":"检索案例"}
+                        yield history+[{"role":"user","content":message},{"role":"assistant","content":f"⏳ {n.get(last,'处理中')}..."}]
+                clean = re.sub(r'\n?🔧[^\n]*\n','\n',full); clean = re.sub(r'\n?✅[^\n]*\n','\n',clean)
+                clean = re.sub(r'^\s*---\s*\n+','',clean)
+                main,src = clean,""
+                if "\n---\n" in clean: parts=clean.rsplit("\n---\n",1); main,src=parts[0].strip(),parts[1].strip()
+                final = main
+                if src: final += f'\n<div class="source-cite">{src.replace(chr(10)," · ")}</div>'
+                final = re.sub(r'\n{3,}','\n\n',final)
+                yield history+[{"role":"user","content":message},{"role":"assistant","content":final}]
 
-            # ===== Tab 2: 地图 =====
-            with gr.TabItem("🗺️ 灾害地图", id="map", elem_classes=["tabitem"]):
-                with gr.Row():
-                    with gr.Column(scale=4):
-                        map_plot = gr.Plot(label="")
-                    with gr.Column(scale=1, elem_classes=["control-panel"]):
-                        gr.Markdown("### ⚙️ 控制面板")
-                        dtype = gr.Dropdown(
-                            choices=[("🌊 暴雨山洪","flash_flood"),("🔥 极端高温","extreme_heat"),
-                                     ("🌪️ 沙尘强风","dust_wind"),("🌊 沿海风浪","coastal_wave")],
-                            value="flash_flood", label="灾害类型")
-                        date = gr.Textbox(value="2025-08-28", label="📅 日期 (YYYY-MM-DD)")
-                        gr.Markdown("**风险等级筛选**")
-                        risk_min = gr.Slider(0, 1, value=0, step=0.05, label="最低风险")
-                        risk_max = gr.Slider(0, 1, value=1, step=0.05, label="最高风险")
-                        btn = gr.Button("🔍 更新地图", variant="primary")
-                        stats = gr.Markdown("")
+            send.click(fn=respond,inputs=[msg,chatbot],outputs=[chatbot]).then(fn=lambda:"",outputs=[msg])
+            msg.submit(fn=respond,inputs=[msg,chatbot],outputs=[chatbot]).then(fn=lambda:"",outputs=[msg])
+            gr.Examples(examples=["2025年8月15日沙特有山洪风险吗？","明天利雅得地区会不会有热浪？","红海沿岸有没有风浪预警？","看看8月20日的沙尘暴预测"], inputs=msg)
 
-                btn.click(fn=plot_risk_map, inputs=[dtype,date,risk_min,risk_max], outputs=[map_plot,stats])
+        # ===== Tab 2: 地图 =====
+        with gr.Column(visible=False, elem_classes=["tab-panel"]) as panel_map:
+            with gr.Row():
+                with gr.Column(scale=4):
+                    map_plot = gr.Plot(label="")
+                with gr.Column(scale=1, elem_classes=["control-panel"]):
+                    gr.Markdown("### ⚙️ 控制面板")
+                    dtype = gr.Dropdown(
+                        choices=[("🌊 暴雨山洪","flash_flood"),("🔥 极端高温","extreme_heat"),
+                                 ("🌪️ 沙尘强风","dust_wind"),("🌊 沿海风浪","coastal_wave")],
+                        value="flash_flood", label="灾害类型")
+                    date = gr.Textbox(value="2025-08-28", label="📅 日期 (YYYY-MM-DD)")
+                    gr.Markdown("**风险等级筛选**")
+                    risk_min = gr.Slider(0, 1, value=0, step=0.05, label="最低风险")
+                    risk_max = gr.Slider(0, 1, value=1, step=0.05, label="最高风险")
+                    btn = gr.Button("🔍 更新地图", variant="primary")
+                    stats = gr.Markdown("")
 
-            # ===== Tab 3: 知识图谱 =====
-            with gr.TabItem("🕸️ 知识图谱", id="kg", elem_classes=["tabitem"]):
-                gr.Markdown("### 多层级知识网络 — 气象因子 → 灾害类型 → 基础设施关联")
-                kg_html = gr.HTML(value="<p style='color:#94a3b8;text-align:center;padding:60px;font-size:16px'>点击下方按钮加载交互式知识图谱</p>")
-                with gr.Row():
-                    kg_btn = gr.Button("🔄 加载知识图谱", variant="primary", scale=1)
-                    gr.Markdown("🖱️ 可拖拽节点、缩放、悬停查看详情 | 实线=直接影响，虚线=间接关联")
-                kg_btn.click(fn=plot_kg, outputs=[kg_html])
+            btn.click(fn=plot_risk_map, inputs=[dtype,date,risk_min,risk_max], outputs=[map_plot,stats])
+
+        # ===== Tab 3: 知识图谱 =====
+        with gr.Column(visible=False, elem_classes=["tab-panel"]) as panel_kg:
+            gr.Markdown("### 多层级知识网络 — 气象因子 → 灾害类型 → 基础设施关联")
+            kg_html = gr.HTML(value="<p class='loading-placeholder'>点击下方按钮加载交互式知识图谱</p>")
+            with gr.Row():
+                kg_btn = gr.Button("🔄 加载知识图谱", variant="primary", scale=1)
+                gr.Markdown("🖱️ 可拖拽节点、缩放、悬停查看详情 | 实线=直接影响，虚线=间接关联")
+            kg_btn.click(fn=plot_kg, outputs=[kg_html])
+
+        # 标签页切换逻辑
+        def switch_tab(tab):
+            return (
+                gr.update(visible=(tab == "chat")),
+                gr.update(visible=(tab == "map")),
+                gr.update(visible=(tab == "kg")),
+            )
+        tab_radio.change(fn=switch_tab, inputs=[tab_radio], outputs=[panel_chat, panel_map, panel_kg])
 
     return app
 
