@@ -13,31 +13,6 @@ OUT = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 
 # 日期（可通过命令行 --date 指定）
 DATE = "2025-08-28"
 
-# 沙特海岸线（近似坐标，与实际地图有 ~0.1° 偏差属正常）
-RS = [(16.4,42.35),(17.0,42.1),(17.7,41.7),(18.5,41.1),(19.0,40.6),(19.5,40.1),
-      (20.2,39.9),(21.0,39.3),(21.6,39.15),(22.0,39.0),(22.5,38.9),(23.0,38.6),
-      (23.5,38.4),(24.0,38.0),(24.5,37.55),(25.0,37.15),(25.5,36.8),(26.0,36.4),
-      (26.5,35.95),(27.0,35.5),(27.5,35.1),(28.0,34.9),(28.5,34.85),(29.0,34.8)]
-GL = [(26.6,50.1),(27.0,49.75),(27.5,49.4),(27.9,48.9),(27.5,48.6),(27.0,48.7),
-      (26.5,49.0),(26.0,49.3),(25.5,49.5),(25.0,49.8),(24.5,50.5),(24.0,50.8),
-      (23.5,51.0),(23.0,51.2),(22.5,51.5),(22.0,51.8)]
-SB = [(16.3,42.35),(16.3,45),(16.3,48),(16.3,51),(16.3,54),(16.3,55.5)]
-NB = [(32.1,34.8),(32.1,37),(32.1,40),(32.1,43),(32.1,46),(32.1,49)]
-
-def add_map_lines(fig):
-    fig.add_trace(go.Scatter(x=[p[1] for p in RS], y=[p[0] for p in RS],
-        mode="lines", line=dict(color="#1e40af", width=2.5), name="红海海岸", legendgroup="g",
-        legendgrouptitle=dict(text="地图标注(近似)"), hovertemplate="红海海岸线<extra></extra>"))
-    fig.add_trace(go.Scatter(x=[p[1] for p in GL], y=[p[0] for p in GL],
-        mode="lines", line=dict(color="#0891b2", width=2.5), name="阿拉伯湾海岸", legendgroup="g",
-        hovertemplate="阿拉伯湾海岸线<extra></extra>"))
-    fig.add_trace(go.Scatter(x=[p[1] for p in SB], y=[p[0] for p in SB],
-        mode="lines", line=dict(color="#cbd5e1", width=1.5, dash="dash"), name="南部国界", legendgroup="g",
-        hovertemplate="南部国界(近似)<extra></extra>"))
-    fig.add_trace(go.Scatter(x=[p[1] for p in NB], y=[p[0] for p in NB],
-        mode="lines", line=dict(color="#cbd5e1", width=1.5, dash="dash"), name="北部国界", legendgroup="g",
-        hovertemplate="北部国界(近似)<extra></extra>"))
-
 def layout(title, cmap_title, cmin, cmax, colors):
     return go.Layout(
         title=dict(text=title, font=dict(size=19, color="#1e293b", family="SimHei"), x=0.5),
@@ -125,9 +100,6 @@ for u,v in uniq[::step]:
         fig1.add_annotation(x=au["lon"],y=au["lat"], ax=au["lon"]+dx, ay=au["lat"]+dy,
             showarrow=True, arrowhead=2, arrowsize=1.2, arrowwidth=1.5, arrowcolor="#475569", text="", opacity=.5)
 
-add_map_lines(fig1)
-fig1.add_annotation(x=37.5,y=24.5,text="红 海",showarrow=False,font=dict(size=14,color="#1e40af",family="SimHei"),opacity=.4)
-fig1.add_annotation(x=51.5,y=24,text="阿拉伯湾",showarrow=False,font=dict(size=11,color="#0891b2",family="SimHei"),opacity=.4)
 
 # ============================================================
 # 面板 2: 极端高温
@@ -145,9 +117,6 @@ fig2.add_trace(go.Heatmap(z=hot, x=lons, y=lats, zsmooth="best",
 fig2.add_trace(go.Heatmap(z=tmax_g, x=lons, y=lats, zsmooth="best", coloraxis="coloraxis",
     hovertemplate="经度: %{x:.2f}°E<br>纬度: %{y:.2f}°N<br>最高温: %{z:.1f} °C<extra></extra>", name="气温"))
 
-add_map_lines(fig2)
-fig2.add_annotation(x=37.5,y=24.5,text="红 海",showarrow=False,font=dict(size=14,color="#1e40af",family="SimHei"),opacity=.4)
-fig2.add_annotation(x=51.5,y=24,text="阿拉伯湾",showarrow=False,font=dict(size=11,color="#0891b2",family="SimHei"),opacity=.4)
 
 # ============================================================
 # 面板 3: 沙尘强风
@@ -165,9 +134,6 @@ fig3.add_trace(go.Heatmap(z=strong, x=lons, y=lats, zsmooth="best",
 fig3.add_trace(go.Heatmap(z=ws_g, x=lons, y=lats, zsmooth="best", coloraxis="coloraxis",
     hovertemplate="经度: %{x:.2f}°E<br>纬度: %{y:.2f}°N<br>风速: %{z:.1f} m/s<extra></extra>", name="风速"))
 
-add_map_lines(fig3)
-fig3.add_annotation(x=37.5,y=24.5,text="红 海",showarrow=False,font=dict(size=14,color="#1e40af",family="SimHei"),opacity=.4)
-fig3.add_annotation(x=51.5,y=24,text="阿拉伯湾",showarrow=False,font=dict(size=11,color="#0891b2",family="SimHei"),opacity=.4)
 
 # ============================================================
 # 面板 4: 沿海风浪
@@ -181,9 +147,6 @@ fig4.add_trace(go.Heatmap(z=cst_all, x=lons, y=lats, zsmooth="best", coloraxis="
     hovertemplate="经度: %{x:.2f}°E<br>纬度: %{y:.2f}°N<br>海拔: %{z:.0f} m<br><i>↓ 海拔越低,风浪风险越高</i><extra></extra>",
     name="沿海低地"))
 
-add_map_lines(fig4)
-fig4.add_annotation(x=37.5,y=24.5,text="红 海",showarrow=False,font=dict(size=14,color="#1e40af",family="SimHei"),opacity=.4)
-fig4.add_annotation(x=51.5,y=24,text="阿拉伯湾",showarrow=False,font=dict(size=11,color="#0891b2",family="SimHei"),opacity=.4)
 
 # ============================================================
 # HTML
@@ -216,7 +179,7 @@ body{{font-family:"Segoe UI","Microsoft YaHei",system-ui,sans-serif;background:#
 <div class="top">
 <div class="header">
 <h1>🛰️ MAZU 知识图谱 — 四灾害实际运行可视化</h1>
-<p>NetworkX DiGraph · {G.number_of_nodes():,} 节点 · {G.number_of_edges():,} 边 | {DATE} | 海岸线为近似绘制</p>
+<p>NetworkX DiGraph · {G.number_of_nodes():,} 节点 · {G.number_of_edges():,} 边 | {DATE}</p>
 </div>
 <div class="tabs">
 <button class="tb on" onclick="sw(0)">⚡ 暴雨山洪</button>
