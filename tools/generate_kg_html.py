@@ -200,13 +200,11 @@ var network = new vis.Network(document.getElementById("network"), {{nodes:nodes,
   edges: {{ smooth: {{ type: "continuous", roundness: 0.3 }}, font: {{ align: "horizontal" }} }}
 }});
 
-// 1-hop 邻接
-var neighbors = {{}};
+// 有向上游邻接（从 to → from：灾害→机制→因子）
+var upstream = {{}};
 allEdges.forEach(function(e) {{
-  if (!neighbors[e.from]) neighbors[e.from] = new Set();
-  if (!neighbors[e.to])   neighbors[e.to]   = new Set();
-  neighbors[e.from].add(e.to);
-  neighbors[e.to].add(e.from);
+  if (!upstream[e.to]) upstream[e.to] = [];
+  upstream[e.to].push(e.from);
 }});
 
 var cur = null;
@@ -215,18 +213,20 @@ function pick(label) {{
   var root = null;
   allNodes.forEach(function(n) {{ if (n.label === label) root = n.id; }});
   if (root === null) return;
-  // 1-hop: root + 直接邻居 + 邻居的邻居（2-hop，覆盖 因子→机制→灾害）
-  var vis = new Set([root]);
-  (neighbors[root] || new Set()).forEach(function(nb) {{ vis.add(nb); }});
-  // 再往外一层
-  var hop2 = new Set(vis);
-  vis.forEach(function(v) {{
-    (neighbors[v] || new Set()).forEach(function(nb) {{ hop2.add(nb); }});
-  }});
 
-  var nu = []; nodes.get().forEach(function(n) {{ nu.push({{id:n.id,hidden:!hop2.has(n.id)}}); }});
+  // 有向 BFS 从灾害向上游走（灾害→机制→因子），不走向下游的其他灾害
+  var vis = new Set([root]);
+  var queue = [root];
+  while (queue.length) {{
+    var v = queue.shift();
+    (upstream[v] || []).forEach(function(nb) {{
+      if (!vis.has(nb)) {{ vis.add(nb); queue.push(nb); }}
+    }});
+  }}
+
+  var nu = []; nodes.get().forEach(function(n) {{ nu.push({{id:n.id,hidden:!vis.has(n.id)}}); }});
   nodes.update(nu);
-  var eu = []; edges.get().forEach(function(e) {{ eu.push({{id:e.id,hidden:!hop2.has(e.from)||!hop2.has(e.to)}}); }});
+  var eu = []; edges.get().forEach(function(e) {{ eu.push({{id:e.id,hidden:!vis.has(e.from)||!vis.has(e.to)}}); }});
   edges.update(eu);
 
   document.querySelectorAll(".fbtn").forEach(function(b) {{ b.classList.remove("on"); }});
