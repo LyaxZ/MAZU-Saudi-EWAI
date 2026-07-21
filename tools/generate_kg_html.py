@@ -22,12 +22,12 @@ factors = [
     ("风切变",     "#fecaca", "850-300hPa 深层风切变"),
 ]
 
-# Layer 1: 灾害类型（列 x=0）
+# Layer 1: 灾害类型（列 x=0）(name, icon, bgColor, fontColor, desc)
 disasters = [
-    ("山洪", "⚡", "#ef4444", "暴雨山洪：强降水 + 对流不稳定 + 地形抬升"),
-    ("高温", "🔥", "#f97316", "极端高温：气温异常偏离气候态"),
-    ("沙尘", "🌪️", "#eab308", "沙尘强风：强风 + 干燥 + 低湿度 + 裸土"),
-    ("风浪", "🌊", "#3b82f6", "沿海风浪：强风 + 低地形 + 水汽输送"),
+    ("山洪", "⚡", "#ef4444", "#fff",    "暴雨山洪：强降水 + 对流不稳定 + 地形抬升"),
+    ("高温", "🔥", "#f97316", "#fff",    "极端高温：气温异常偏离气候态"),
+    ("沙尘", "🌪️", "#eab308", "#1e293b", "沙尘强风：强风 + 干燥 + 低湿度 + 裸土"),
+    ("风浪", "🌊", "#3b82f6", "#fff",    "沿海风浪：强风 + 低地形 + 水汽输送"),
 ]
 
 # 因子 → 灾害 边（含标签说明）
@@ -87,11 +87,11 @@ for i, (name, color, desc) in enumerate(factors):
     nid += 1
 
 # --- 灾害 ---
-for i, (name, icon, color, desc) in enumerate(disasters):
+for i, (name, icon, color, fcolor, desc) in enumerate(disasters):
     nodes.append({"id": nid, "label": f"{icon} {name}", "title": desc,
-        "color": {"background": color, "border": "#fff"},
+        "color": {"background": color, "border": "#1e293b"},
         "shape": "dot", "size": 45, "borderWidth": 3,
-        "font": {"size": 14, "face": "Segoe UI", "color": "#fff", "bold": True},
+        "font": {"size": 14, "face": "Segoe UI", "color": fcolor, "bold": True},
         "x": 0, "y": (i - 1.5) * 120, "fixed": True, "group": "disaster"})
     nid += 1
 
@@ -117,7 +117,7 @@ for wi, w in enumerate(WADIS):
         "title": f"{w['length_km']}km | 山洪风险区",
         "color": {"background": "#06b6d4", "border": "#0891b2"},
         "shape": "diamond", "size": 11,
-        "font": {"size": 9, "face": "Segoe UI", "color": "#fff"},
+        "font": {"size": 9, "face": "Segoe UI", "color": "#1e293b"},
         "x": 500, "y": (ci + wi) * 42, "fixed": True, "group": "wadi"})
     nid += 1
 
