@@ -70,27 +70,37 @@ class CaseRetrieval:
     def add_case(
         self,
         disaster_type: str,
-        feature_vector: np.ndarray,
+        feature_vector: Optional[np.ndarray] = None,
         date: Optional[str] = None,
         location: Optional[str] = None,
         severity: int = 1,
         measures: Optional[List[str]] = None,
         metadata: Optional[Dict] = None,
+        description: Optional[str] = None,
     ) -> int:
         """添加一个历史案例。
 
         Args:
             disaster_type: 灾害类型 — "flash_flood" / "extreme_heat" / "dust_wind" / "coastal_wave"
-            feature_vector: 气象特征向量 (n_features,)
+            feature_vector: 气象特征向量 (n_features,)，为None时从description自动生成
             date: 发生日期 (YYYY-MM-DD)
             location: 位置描述
             severity: 严重程度 (1-5)
             measures: 已采取的应对措施列表
             metadata: 其他元数据
+            description: 案例文本描述（用于自动生成特征向量）
 
         Returns:
             案例 ID
         """
+        # 自动生成向量
+        if feature_vector is None:
+            feature_vector = self._text_to_vec(description or "")
+        else:
+            feature_vector = np.asarray(feature_vector, dtype=np.float64)
+        # 兼容 measures 传字符串的情况
+        if isinstance(measures, str):
+            measures = [measures]
         case_id = len(self._cases)
 
         case = {
@@ -415,9 +425,39 @@ class CaseRetrieval:
         print(f"  生成 {len(self._cases)} 个合成案例 "
               f"(类型: {self._n_cases_by_type})")
 
-    # ================================================================
+    # ═══════════════════════════════════════════════
+    # 特征向量生成
+    # ═══════════════════════════════════════════════
+
+    def _text_to_vec(self, text: str) -> np.ndarray:
+        """从描述文本生成简单的特征向量（关键词匹配）。"""
+        keywords = {
+            "precip": ["强降水", "暴雨", "降雨", "洪水", "precip", "flood", "rain",
+                        "洪", "雨", "水"],
+            "cape":   ["对流", "CAPE", "雷暴", "冰雹", "thunder", "hail", "cape"],
+            "temp":   ["高温", "热浪", "酷热", "heat", "hot", "温度", "47", "52",
+                        "°C", "朝觐"],
+            "wind":   ["大风", "强风", "风速", "wind", "100km", "25节", "m/s"],
+            "dust":   ["沙尘", "沙暴", "Haboob", "dust", "sand", "能见度",
+                        "尘", "沙墙"],
+            "dry":    ["干燥", "干旱", "dry", "湿度", "VPD"],
+            "coast":  ["沿海", "海岸", "港口", "风浪", "海浪", "coast", "wave",
+                        "红海", "阿拉伯湾"],
+            "wadi":   ["Wadi", "wadi", "河道", "山谷"],
+            "urban":  ["城市", "城区", "居民", "疏散", "停课", "机场",
+                        "利雅得", "吉达", "麦加"],
+        }
+        dim = 10
+        vec = np.zeros(dim)
+        for i, (key, terms) in enumerate(keywords.items()):
+            if any(t in text for t in terms):
+                vec[i % dim] = 1.0
+        norm = np.linalg.norm(vec)
+        return vec / norm if norm > 0 else vec
+
+    # ═══════════════════════════════════════════════
     # 持久化
-    # ================================================================
+    # ═══════════════════════════════════════════════
 
     def save(self, filepath: str) -> None:
         """保存案例库到 JSON 文件（特征向量保存为独立 .npy 文件）。"""

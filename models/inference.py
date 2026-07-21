@@ -327,6 +327,11 @@ class DisasterInference:
         from datetime import datetime, timedelta
 
         end_dt = datetime.strptime(end_date, "%Y-%m-%d")
+        # 非 2025 年日期回退到 2025 年同月同日
+        original_date = end_date
+        if end_dt.year != 2025:
+            end_dt = end_dt.replace(year=2025)
+            end_date = end_dt.strftime("%Y-%m-%d")
         start_dt = end_dt - timedelta(days=lookback_days - 1)
         start_str = start_dt.strftime("%Y-%m-%d")
 
@@ -388,6 +393,7 @@ class DisasterInference:
             "change_pct": round(change, 1),
             "peak_date": peak["date"],
             "peak_mean_risk": peak["mean_risk"],
+            "fallback_note": f"以{end_date}为参考" if original_date != end_date else "",
         }
 
     def predict_from_nc(
