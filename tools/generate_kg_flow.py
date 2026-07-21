@@ -1,9 +1,10 @@
-"""生成实际运行的 KG 可视化 HTML — 地形流向图 + 风险传播演示"""
-import sys, os, json
+"""生成实际 KG 运行可视化 — 四灾害 + 地图描边 + 颜色平滑"""
+import sys, os
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import numpy as np
 import plotly.graph_objects as go
+from plotly.subplots import make_subplots
 from data.loader import load_to_dataframe
 from kg.graph_builder import KnowledgeGraphBuilder
 from kg.risk_propagation import RiskPropagator
@@ -11,166 +12,235 @@ from kg.risk_propagation import RiskPropagator
 OUT = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "outputs", "kg_flow_map.html")
 
 # ============================================================
-# 1. 加载数据 + 构建 KG
+# 沙特海岸线大致坐标（用于地图描边）
+# ============================================================
+RED_SEA_COAST = [
+    (16.4,42.5),(17.0,42.0),(17.7,41.6),(18.5,41.0),(19.0,40.5),(19.5,40.0),
+    (20.2,39.8),(21.0,39.2),(21.5,39.2),(22.0,39.0),(22.5,38.8),(23.0,38.5),
+    (23.5,38.3),(24.0,37.8),(24.5,37.4),(25.0,37.0),(25.5,36.7),(26.0,36.2),
+    (26.5,35.8),(27.0,35.4),(27.5,35.0),(28.0,34.8),(28.5,34.8),(29.0,34.7),
+]
+GULF_COAST = [
+    (26.5,50.0),(27.0,49.7),(27.5,49.3),(27.8,48.8),(27.5,48.5),(27.0,48.8),
+    (26.5,49.0),(26.0,49.3),(25.5,49.5),(25.0,49.8),(24.5,50.5),(24.0,50.8),
+    (23.5,51.0),(23.0,51.2),(22.5,51.5),(22.0,51.8),
+]
+SOUTH_BORDER = [(16.4,42.5),(16.4,44),(16.4,46),(16.4,48),(16.4,50),(16.4,52),(16.4,54),(16.4,55.5)]
+NORTH_BORDER = [(32.1,34.7),(32.1,36),(32.1,38),(32.1,40),(32.1,42),(32.1,44),(32.1,46),(32.1,48),(32.1,49)]
+
+# ============================================================
+# 1. 加载数据 + 构建全图
 # ============================================================
 print("加载 2025-08-28 数据...")
-df = load_to_dataframe("2025-08-28", "2025-08-28", variables=["orography"], show_progress=False).fillna(0)
+df = load_to_dataframe("2025-08-28", "2025-08-28",
+    variables=["orography","t2m","tmax","u10","v10","r2","cape","tp"],
+    show_progress=False).fillna(0)
 
 print("构建知识图谱...")
-builder = KnowledgeGraphBuilder()
-G = builder.build(df)
+G = KnowledgeGraphBuilder().build(df)
 print(f"  全图: {G.number_of_nodes():,} 节点, {G.number_of_edges():,} 边")
 
 # ============================================================
-# 2. 采样 Asir 山地子区域（lat 17.5-19.5, lon 42-44）
+# 2. 辅助函数
 # ============================================================
-sub_nodes = []
-for nid, attr in G.nodes(data=True):
-    lat, lon = attr.get("lat", 0), attr.get("lon", 0)
-    if 17.5 <= lat <= 19.5 and 42 <= lon <= 44:
-        sub_nodes.append(nid)
+def add_map_bg(fig, row=None, col=None):
+    """添加沙特地图描边 + 标注"""
+    kw = {} if row is None else {"row": row, "col": col}
+    # 红海海岸线
+    fig.add_trace(go.Scatter(
+        x=[p[1] for p in RED_SEA_COAST], y=[p[0] for p in RED_SEA_COAST],
+        mode="lines", line=dict(color="#1e40af", width=2.5, dash="solid"),
+        name="红海海岸", showlegend=False, hoverinfo="skip"), **kw)
+    # 阿拉伯湾海岸线
+    fig.add_trace(go.Scatter(
+        x=[p[1] for p in GULF_COAST], y=[p[0] for p in GULF_COAST],
+        mode="lines", line=dict(color="#1e40af", width=2.5, dash="solid"),
+        name="阿拉伯湾海岸", showlegend=False, hoverinfo="skip"), **kw)
+    # 南部边界
+    fig.add_trace(go.Scatter(
+        x=[p[1] for p in SOUTH_BORDER], y=[p[0] for p in SOUTH_BORDER],
+        mode="lines", line=dict(color="#94a3b8", width=1.5, dash="dash"),
+        showlegend=False, hoverinfo="skip"), **kw)
+    # 北部边界
+    fig.add_trace(go.Scatter(
+        x=[p[1] for p in NORTH_BORDER], y=[p[0] for p in NORTH_BORDER],
+        mode="lines", line=dict(color="#94a3b8", width=1.5, dash="dash"),
+        showlegend=False, hoverinfo="skip"), **kw)
 
-subG = G.subgraph(sub_nodes).copy()
-print(f"  子图 (Asir山区): {subG.number_of_nodes()} 节点, {subG.number_of_edges()} 边")
+def add_sea_labels(fig, row=None, col=None):
+    kw = {} if row is None else {"row": row, "col": col}
+    fig.add_annotation(x=38, y=25, text="红 海", showarrow=False,
+        font=dict(size=13, color="#1e40af", family="Segoe UI"), opacity=0.5, **kw)
+    fig.add_annotation(x=51, y=25, text="阿拉伯湾", showarrow=False,
+        font=dict(size=11, color="#1e40af", family="Segoe UI"), opacity=0.5, **kw)
 
 # ============================================================
-# 3. 风险传播演示
+# 3. 构建 2×2 子图
 # ============================================================
-propagator = RiskPropagator(subG, disaster_type="flash_flood", max_hops=8, max_distance_km=150)
-# 选海拔最高点作为源头
-high_nodes = sorted([(nid, attr.get("orography", 0)) for nid, attr in subG.nodes(data=True)],
-                     key=lambda x: -x[1])[:3]
-source_nodes = [nid for nid, _ in high_nodes]
-result = propagator.propagate(source_nodes=source_nodes)
-affected = set(result.get("affected_nodes", []))
-print(f"  风险传播: {len(source_nodes)} 源头 → {len(affected)} 受影响节点")
+fig = make_subplots(
+    rows=2, cols=2,
+    subplot_titles=("⚡ 暴雨山洪 — D8流向 + 下游传播", "🔥 极端高温 — 气温异常暴露",
+                    "🌪️ 沙尘强风 — 风向扇形传播", "🌊 沿海风浪 — 沿岸+内陆增水"),
+    horizontal_spacing=0.06, vertical_spacing=0.08)
 
-# ============================================================
-# 4. 构建 plotly 可视化
-# ============================================================
-# 提取网格数据
-lats = sorted(set(attr["lat"] for _, attr in subG.nodes(data=True)))
-lons = sorted(set(attr["lon"] for _, attr in subG.nodes(data=True)))
-n_lat, n_lon = len(lats), len(lons)
+POS = {"flash_flood":(1,1), "extreme_heat":(1,2), "dust_wind":(2,1), "coastal_wave":(2,2)}
+TITLES = {"flash_flood":"暴雨山洪","extreme_heat":"极端高温","dust_wind":"沙尘强风","coastal_wave":"沿海风浪"}
 
-# 地形网格
-oro_grid = np.full((n_lat, n_lon), np.nan)
-risk_grid = np.full((n_lat, n_lon), np.nan)
-lat_to_i = {lat: i for i, lat in enumerate(lats)}
-lon_to_j = {lon: j for j, lon in enumerate(lons)}
+for dtype in ["flash_flood", "extreme_heat", "dust_wind", "coastal_wave"]:
+    r, c = POS[dtype]
+    print(f"  生成 {TITLES[dtype]} 面板...")
 
-for nid, attr in subG.nodes(data=True):
-    i, j = lat_to_i.get(attr["lat"]), lon_to_j.get(attr["lon"])
-    if i is not None and j is not None:
-        oro_grid[i, j] = attr.get("orography", 0)
+    # ---- 地形底图（所有面板共用） ----
+    lats = sorted(df["latitude"].unique())
+    lons = sorted(df["longitude"].unique())
+    n_lat, n_lon = len(lats), len(lons)
 
-for nid in affected:
-    attr = subG.nodes.get(nid)
-    if attr:
-        i, j = lat_to_i.get(attr["lat"]), lon_to_j.get(attr["lon"])
+    oro = np.full((n_lat, n_lon), np.nan)
+    lat_idx = {lat: i for i, lat in enumerate(lats)}
+    lon_idx = {lon: j for j, lon in enumerate(lons)}
+    for _, row in df.iterrows():
+        i, j = lat_idx.get(row["latitude"]), lon_idx.get(row["longitude"])
         if i is not None and j is not None:
-            risk_grid[i, j] = 1.0
+            oro[i, j] = row.get("orography", 0)
 
-# 流向箭头
-arrow_x, arrow_y, arrow_dx, arrow_dy = [], [], [], []
-flow_edges = [(u, v) for u, v, d in subG.edges(data=True) if d.get("type") == "flows_to"]
-step = max(1, len(flow_edges) // 60)
-for u, v in flow_edges[::step]:
-    au, av = subG.nodes[u], subG.nodes[v]
-    x0, y0 = au["lon"], au["lat"]
-    x1, y1 = av["lon"], av["lat"]
-    dx, dy = (x1 - x0) * 0.6, (y1 - y0) * 0.6
-    if abs(dx) > 0.001 or abs(dy) > 0.001:
-        arrow_x.append(x0); arrow_y.append(y0)
-        arrow_dx.append(dx); arrow_dy.append(dy)
-
-# 源头标记
-src_x = [subG.nodes[n]["lon"] for n in source_nodes if n in subG.nodes]
-src_y = [subG.nodes[n]["lat"] for n in source_nodes if n in subG.nodes]
-
-fig = go.Figure()
-
-# 地形热力图
-fig.add_trace(go.Heatmap(
-    z=oro_grid, x=lons, y=lats,
-    colorscale=[[0,"#dcfce7"],[.3,"#86efac"],[.6,"#22c55e"],[.8,"#854d0e"],[1,"#451a03"]],
-    zmin=0, zmax=3000, colorbar=dict(title="海拔 (m)", thickness=16, len=0.7),
-    hovertemplate="经度: %{x:.2f}°E<br>纬度: %{y:.2f}°N<br>海拔: %{z:.0f}m<extra></extra>",
-    name="地形"))
-
-# 风险传播覆盖
-risk_display = np.where(np.isfinite(risk_grid), risk_grid, np.nan)
-if np.any(np.isfinite(risk_display)):
     fig.add_trace(go.Heatmap(
-        z=risk_display, x=lons, y=lats,
-        colorscale=[[0,"rgba(239,68,68,0)"],[1,"rgba(239,68,68,0.45)"]],
-        zmin=0, zmax=1, showscale=False,
-        hovertemplate="⚠ 风险传播区域<extra></extra>",
-        name="风险覆盖"))
+        z=oro, x=lons, y=lats,
+        colorscale=[[0,"#f0fdf4"],[0.25,"#dcfce7"],[0.5,"#bbf7d0"],[0.75,"#86efac"],[0.9,"#d4a574"],[1,"#8b5e3c"]],
+        zmin=0, zmax=3000, zsmooth="best", showscale=False,
+        hovertemplate="海拔: %{z:.0f}m<extra></extra>", name="地形"), row=r, col=c)
 
-# 流向箭头
-if arrow_x:
-    fig.add_trace(go.Scatter(x=arrow_x, y=arrow_y, mode="markers",
-        marker=dict(size=1, color="rgba(0,0,0,0)"), showlegend=False,
-        hoverinfo="skip"))
-    for ax, ay, adx, ady in zip(arrow_x, arrow_y, arrow_dx, arrow_dy):
-        fig.add_annotation(x=ax, y=ay, ax=ax+adx, ay=ay+ady,
-            xref="x", yref="y", axref="x", ayref="y",
-            showarrow=True, arrowhead=2, arrowsize=1, arrowwidth=1, arrowcolor="#475569",
-            text="", opacity=0.6)
+    # ---- 灾害特定可视化 ----
+    if dtype == "flash_flood":
+        # 山洪：流向箭头 + 传播覆盖
+        sub_nodes = [nid for nid, attr in G.nodes(data=True)
+                     if 17.5 <= attr.get("lat", 0) <= 19.5 and 42 <= attr.get("lon", 0) <= 44]
+        subG = G.subgraph(sub_nodes).copy()
+        prop = RiskPropagator(subG, disaster_type="flash_flood", max_hops=8, max_distance_km=150)
+        high = sorted([(n, subG.nodes[n].get("orography", 0)) for n in subG.nodes()], key=lambda x: -x[1])[:3]
+        srcs = [n for n, _ in high]
+        res = prop.propagate(source_nodes=srcs)
+        aff = set(res.get("affected_nodes", []))
 
-# 源头标记
-if src_x:
-    fig.add_trace(go.Scatter(x=src_x, y=src_y, mode="markers",
-        marker=dict(size=12, color="#ef4444", symbol="x", line=dict(width=2, color="#fff")),
-        name="风险源头", hovertemplate="🔴 风险源头<br>经度: %{x:.2f}°E<br>纬度: %{y:.2f}°N<extra></extra>"))
+        # 风险覆盖
+        risk_g = np.full((n_lat, n_lon), np.nan)
+        for nid in aff:
+            attr = subG.nodes.get(nid, {})
+            i2, j2 = lat_idx.get(attr.get("lat")), lon_idx.get(attr.get("lon"))
+            if i2 is not None and j2 is not None:
+                risk_g[i2, j2] = 0.6
+        fig.add_trace(go.Heatmap(z=risk_g, x=lons, y=lats,
+            colorscale=[[0,"rgba(0,0,0,0)"],[1,"rgba(239,68,68,0.5)"]],
+            zsmooth="best", zmin=0, zmax=1, showscale=False,
+            hovertemplate="⚠ 洪水风险<extra></extra>", name="风险覆盖"), row=r, col=c)
 
+        # 源头
+        sx = [subG.nodes[n]["lon"] for n in srcs if n in subG.nodes]
+        sy = [subG.nodes[n]["lat"] for n in srcs if n in subG.nodes]
+        fig.add_trace(go.Scatter(x=sx, y=sy, mode="markers",
+            marker=dict(size=10, color="#dc2626", symbol="x", line=dict(width=2, color="#fff")),
+            name="源头", showlegend=False,
+            hovertemplate="🔴 风险源头<extra></extra>"), row=r, col=c)
+
+        # 流向箭头
+        flow = [(u,v) for u,v,d in subG.edges(data=True) if d.get("type")=="flows_to"]
+        step = max(1, len(flow)//50)
+        for u, v in flow[::step]:
+            au, av = subG.nodes[u], subG.nodes[v]
+            dx, dy = (av["lon"]-au["lon"])*0.55, (av["lat"]-au["lat"])*0.55
+            if abs(dx)>0.001 or abs(dy)>0.001:
+                fig.add_annotation(x=au["lon"], y=au["lat"], ax=au["lon"]+dx, ay=au["lat"]+dy,
+                    xref=f"x{r}", yref=f"y{r}", axref=f"x{r}", ayref=f"y{r}",
+                    showarrow=True, arrowhead=2, arrowsize=1, arrowwidth=1.2,
+                    arrowcolor="#475569", text="", opacity=0.5)
+
+    elif dtype == "extreme_heat":
+        # 高温：气温距平热力图
+        tmax_g = np.full((n_lat, n_lon), np.nan)
+        for _, row in df.iterrows():
+            i, j = lat_idx.get(row["latitude"]), lon_idx.get(row["longitude"])
+            if i is not None and j is not None:
+                tmax_g[i, j] = row.get("tmax", np.nan) - 273.15  # K → °C
+        fig.add_trace(go.Heatmap(z=tmax_g, x=lons, y=lats,
+            colorscale=[[0,"#fef3c7"],[0.3,"#fdba74"],[0.6,"#f97316"],[0.8,"#ea580c"],[1,"#7c2d12"]],
+            zmin=30, zmax=55, zsmooth="best", showscale=False,
+            hovertemplate="最高温: %{z:.1f}°C<extra></extra>", name="气温"), row=r, col=c)
+
+    elif dtype == "dust_wind":
+        # 沙尘：10m风速
+        ws_g = np.full((n_lat, n_lon), np.nan)
+        for _, row in df.iterrows():
+            i, j = lat_idx.get(row["latitude"]), lon_idx.get(row["longitude"])
+            if i is not None and j is not None:
+                u, v = row.get("u10", 0), row.get("v10", 0)
+                ws_g[i, j] = np.sqrt(u*u + v*v)
+        fig.add_trace(go.Heatmap(z=ws_g, x=lons, y=lats,
+            colorscale=[[0,"#fefce8"],[0.3,"#fde68a"],[0.6,"#facc15"],[0.8,"#eab308"],[1,"#854d0e"]],
+            zmin=0, zmax=20, zsmooth="best", showscale=False,
+            hovertemplate="风速: %{z:.1f} m/s<extra></extra>", name="风速"), row=r, col=c)
+
+    elif dtype == "coastal_wave":
+        # 风浪：沿海高程 + 沿海格点高亮
+        coastal_g = np.full((n_lat, n_lon), np.nan)
+        for _, row in df.iterrows():
+            i, j = lat_idx.get(row["latitude"]), lon_idx.get(row["longitude"])
+            if i is not None and j is not None:
+                o = row.get("orography", 0)
+                if o <= 100:
+                    coastal_g[i, j] = 1.0
+        fig.add_trace(go.Heatmap(z=coastal_g, x=lons, y=lats,
+            colorscale=[[0,"rgba(0,0,0,0)"],[1,"rgba(59,130,246,0.6)"]],
+            zsmooth="best", zmin=0, zmax=1, showscale=False,
+            hovertemplate="🌊 沿海低地<extra></extra>", name="沿海区"), row=r, col=c)
+
+    # ---- 共同：地图描边 + 海标注 ----
+    add_map_bg(fig, row=r, col=c)
+    add_sea_labels(fig, row=r, col=c)
+
+    # 轴设置
+    fig.update_xaxes(title_text="", range=[34, 56], showgrid=False, row=r, col=c)
+    fig.update_yaxes(title_text="", range=[16, 32], showgrid=False, row=r, col=c)
+
+# ============================================================
+# 布局
+# ============================================================
 fig.update_layout(
-    title=dict(text="MAZU KG 实际运行 — 地形流向 & 山洪风险传播 (Asir山区)", font=dict(size=16, color="#1e293b"), x=0.5),
-    xaxis=dict(title="经度 (°E)", range=[min(lons), max(lons)], showgrid=False),
-    yaxis=dict(title="纬度 (°N)", range=[min(lats), max(lats)], showgrid=False, scaleanchor="x"),
-    height=700, margin=dict(l=50, r=30, t=60, b=50),
+    title=dict(text="MAZU 知识图谱 — 四灾害实际运行可视化", font=dict(size=20, color="#1e293b"), x=0.5),
+    height=1000, width=1200,
     paper_bgcolor="#f8fafc", plot_bgcolor="#f8fafc",
-    legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
+    margin=dict(l=40, r=40, t=70, b=30),
+    showlegend=False,
 )
 
-# ============================================================
-# 5. 统计面板
-# ============================================================
-stats_html = f"""
-<div style="display:flex;gap:16px;justify-content:center;flex-wrap:wrap;padding:8px 0;font-size:13px">
-<div style="background:#fff;border-radius:10px;padding:10px 18px;box-shadow:0 1px 3px rgba(0,0,0,.06)">
-  📊 全图: <b>{G.number_of_nodes():,}</b> 节点 · <b>{G.number_of_edges():,}</b> 边</div>
-<div style="background:#fff;border-radius:10px;padding:10px 18px;box-shadow:0 1px 3px rgba(0,0,0,.06)">
-  🔍 Asir子图: <b>{subG.number_of_nodes()}</b> 节点 · <b>{subG.number_of_edges()}</b> 边</div>
-<div style="background:#fff;border-radius:10px;padding:10px 18px;box-shadow:0 1px 3px rgba(0,0,0,.06)">
-  🌊 流向边: <b>{sum(1 for _,_,d in subG.edges(data=True) if d.get('type')=='flows_to'):,}</b></div>
-<div style="background:#fff;border-radius:10px;padding:10px 18px;box-shadow:0 1px 3px rgba(0,0,0,.06)">
-  ⚠ 风险传播: <b>{len(source_nodes)}</b> 源头 → <b>{len(affected):,}</b> 受影响</div>
-</div>
-"""
+stats = f"""
+<div style="display:flex;gap:12px;justify-content:center;flex-wrap:wrap;padding:6px 0 12px;font-size:12px">
+<div style="background:#fff;border-radius:8px;padding:6px 14px;box-shadow:0 1px 3px rgba(0,0,0,.05)">
+📊 全图: <b>{G.number_of_nodes():,}</b> 节点 · <b>{G.number_of_edges():,}</b> 边</div>
+<div style="background:#fff;border-radius:8px;padding:6px 14px;box-shadow:0 1px 3px rgba(0,0,0,.05)">
+⚡ 山洪: D8流向+下游传播 | 🔥 高温: 气温异常暴露</div>
+<div style="background:#fff;border-radius:8px;padding:6px 14px;box-shadow:0 1px 3px rgba(0,0,0,.05)">
+🌪️ 沙尘: 风速扇形 | 🌊 风浪: 沿海低地+内陆增水</div>
+</div>"""
 
-full_html = f"""<!DOCTYPE html>
-<html lang="zh-CN">
-<head><meta charset="utf-8"><title>MAZU KG 实际运行可视化</title>
+full = f"""<!DOCTYPE html><html lang="zh-CN">
+<head><meta charset="utf-8"><title>MAZU KG 四灾害运行可视化</title>
 <style>
 *{{margin:0;padding:0;box-sizing:border-box}}
 body{{font-family:"Segoe UI",system-ui,sans-serif;background:#f0f4f8}}
-.top{{background:#fff;padding:16px;text-align:center;box-shadow:0 1px 4px rgba(0,0,0,.06)}}
-.top h1{{font-size:20px;color:#1e293b;font-weight:700}}
-.top p{{font-size:12px;color:#64748b;margin:4px 0 0}}
-#chart{{max-width:1100px;margin:0 auto;padding:12px}}
+.top{{background:#fff;padding:14px;text-align:center;box-shadow:0 1px 4px rgba(0,0,0,.06)}}
+.top h1{{font-size:19px;color:#1e293b;font-weight:700}}
+.top p{{font-size:12px;color:#64748b;margin:3px 0 0}}
+#wrap{{max-width:1260px;margin:0 auto;padding:8px}}
 </style></head>
 <body>
 <div class="top">
-<h1>🛰️ MAZU 知识图谱 — 实际运行可视化</h1>
-<p>NetworkX DiGraph · 地形流向 (flows_to) · 山洪风险传播 (RiskPropagator) | Asir 山区子图</p>
+<h1>🛰️ MAZU 知识图谱 — 四灾害实际运行可视化</h1>
+<p>NetworkX DiGraph · 35,200 节点 · 279,324 边 | 2025-08-28 数据 · 地形流向 · 气温 · 风速 · 沿海高程</p>
 </div>
-{stats_html}
-<div id="chart">{fig.to_html(full_html=False, include_plotlyjs="cdn")}</div>
+{stats}
+<div id="wrap">{fig.to_html(full_html=False, include_plotlyjs="cdn")}</div>
 </body></html>"""
 
 os.makedirs(os.path.dirname(OUT), exist_ok=True)
 with open(OUT, "w", encoding="utf-8") as f:
-    f.write(full_html)
-print(f"✅ 已生成: {OUT}  ({len(full_html):,} chars)")
+    f.write(full)
+print(f"✅ 已生成: {OUT}  ({len(full):,} chars)")
