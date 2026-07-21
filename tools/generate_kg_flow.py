@@ -1,4 +1,4 @@
-"""生成 KG 运行可视化 — 侧边标签 + 日期参数"""
+"""生成 KG 运行可视化 — 侧边标签 + 日期切换"""
 import sys, os
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
@@ -8,8 +8,14 @@ from data.loader import load_single_day, load_to_dataframe
 from kg.graph_builder import KnowledgeGraphBuilder
 from kg.risk_propagation import RiskPropagator
 
-OUT = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "outputs", "kg_flow_map.html")
 DATE = "2025-08-28"
+for i, a in enumerate(sys.argv):
+    if a == "--date" and i+1 < len(sys.argv): DATE = sys.argv[i+1]
+    elif a.startswith("--date="): DATE = a.split("=", 1)[1]
+
+OUT_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "outputs")
+OUT = os.path.join(OUT_DIR, f"kg_flow_map_{DATE}.html")
+print(f"日期: {DATE}")
 
 # ============================================================
 def layout(title, cmap_title, cmin, cmax, colors):
@@ -28,7 +34,6 @@ def layout(title, cmap_title, cmin, cmax, colors):
     )
 
 # ============================================================
-print(f"加载 {DATE} 数据...")
 ds = load_single_day(DATE)
 lats = ds["latitude"].values.tolist() if "latitude" in ds.coords else ds["lat"].values.tolist()
 lons = ds["longitude"].values.tolist() if "longitude" in ds.coords else ds["lon"].values.tolist()
@@ -126,10 +131,13 @@ fig4.add_trace(go.Heatmap(z=np.where(oro_g<300,oro_g,np.nan), x=lons, y=lats, zs
     hovertemplate="经度:%{x:.2f}°E<br>纬度:%{y:.2f}°N<br>海拔:%{z:.0f}m<br><i>↓越低风险越高</i><extra></extra>"))
 
 # ============================================================
-# HTML
+DATES = ["2025-05-25", "2025-08-28", "2025-12-09"]
+LABELS = ["2025-05-25 52.2°C破纪录高温", "2025-08-28 阿西尔/吉赞山洪", "2025-12-09 吉达历史性洪水"]
+opts = "\n".join(f'<option value="{d}" {"selected" if d==DATE else ""}>{l}</option>' for d,l in zip(DATES,LABELS))
+
 parts = []
-for fid, (fig, div_id) in enumerate(zip([fig1,fig2,fig3,fig4], ["t1","t2","t3","t4"])):
-    parts.append(f'<div id="{div_id}" class="panel" style="display:{"block" if fid==0 else "none"}">')
+for fid, (fig, did) in enumerate(zip([fig1,fig2,fig3,fig4], ["t1","t2","t3","t4"])):
+    parts.append(f'<div id="{did}" class="panel" style="display:{"block" if fid==0 else "none"}">')
     parts.append(fig.to_html(full_html=False, include_plotlyjs=("cdn" if fid==0 else False), config={"displayModeBar":True,"displaylogo":False}))
     parts.append('</div>')
 
@@ -143,9 +151,8 @@ body{{font-family:"Segoe UI","Microsoft YaHei",system-ui,sans-serif;background:#
 .top h1{{font-size:17px;color:#1e293b;font-weight:700;white-space:nowrap}}
 .top .info{{font-size:11px;color:#94a3b8;white-space:nowrap}}
 .date-box{{display:flex;align-items:center;gap:6px}}
-.date-box input{{border:2px solid #e2e8f0;border-radius:8px;padding:5px 10px;font-size:13px;
-  font-family:inherit;color:#334155;width:130px;outline:none;transition:border-color .2s}}
-.date-box input:focus{{border-color:#4f46e5}}
+.date-box select{{border:2px solid #e2e8f0;border-radius:8px;padding:5px 10px;font-size:13px;
+  font-family:inherit;color:#334155;outline:none;cursor:pointer}}
 .date-box .hint{{font-size:10px;color:#94a3b8}}
 .main{{display:flex;height:calc(100vh - 50px)}}
 .side{{width:100px;background:#f8fafc;border-right:1px solid #f1f5f9;
@@ -162,9 +169,10 @@ body{{font-family:"Segoe UI","Microsoft YaHei",system-ui,sans-serif;background:#
 <div class="top">
 <h1>🛰️ MAZU 知识图谱 — 四灾害运行可视化</h1>
 <div class="date-box">
-<input id="dateInp" type="text" value="{DATE}" placeholder="YYYY-MM-DD"
-  title="修改日期后运行: python tools/generate_kg_flow.py --date YYYY-MM-DD">
-<span class="hint">当前展示日期</span>
+<select id="dateSel" onchange="if(this.value)window.location='kg_flow_map_'+this.value+'.html'">
+{opts}
+</select>
+<span class="hint">切换日期</span>
 </div>
 <div class="info">{G.number_of_nodes():,} 节点 · {G.number_of_edges():,} 边</div>
 </div>
@@ -185,7 +193,7 @@ setTimeout(function(){{window.dispatchEvent(new Event("resize"))}},150)}}
 </script>
 </body></html>"""
 
-os.makedirs(os.path.dirname(OUT), exist_ok=True)
+os.makedirs(OUT_DIR, exist_ok=True)
 with open(OUT, "w", encoding="utf-8") as f:
     f.write(FULL)
-print(f"✅ 已生成: {OUT}  ({len(FULL):,} chars) | 日期: {DATE}")
+print(f"✅ {OUT}  ({len(FULL):,} chars)")
