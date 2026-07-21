@@ -33,6 +33,7 @@ Thumbs.db
 # 输出产物
 outputs/models/*
 outputs/logs/*
+outputs/*.log
 !outputs/models/.gitkeep
 !outputs/logs/.gitkeep
 
