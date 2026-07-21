@@ -17,7 +17,7 @@ from llm_agent.agent import MazuAgent
 # CSS
 # ═══════════════════════════════════════════════
 
-DEEPSEEK_CSS = """
+DEFAULT_CSS = """
 body, .gradio-container { background: #f7f8fa !important; }
 footer { display: none !important; }
 .main-header { text-align: center; padding: 20px 0 10px 0; }
@@ -128,7 +128,7 @@ def build_ui():
 def launch_app(share: bool = False, **kwargs):
     kwargs.setdefault("server_name", "0.0.0.0")
     kwargs.setdefault("server_port", 7860)
-    kwargs.setdefault("css", DEEPSEEK_CSS)
+    kwargs.setdefault("css", DEFAULT_CSS)
     app = build_ui()
     app.launch(share=share, **kwargs)
 
