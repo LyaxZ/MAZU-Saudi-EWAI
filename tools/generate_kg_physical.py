@@ -74,8 +74,8 @@ for u, v in uniq[::step]:
 
 fig.update_layout(
     title=dict(text="MAZU KG 物理层 — D8 地形流向 & 山洪风险传播 (Asir 山区)", font=dict(size=18, color="#1e293b"), x=.5),
-    xaxis=dict(range=[34, 56], title="经度 (°E)", showgrid=False),
-    yaxis=dict(range=[16, 32], title="纬度 (°N)", showgrid=False),
+    xaxis=dict(range=[41.5, 44.5], title="经度 (°E)", showgrid=False),
+    yaxis=dict(range=[17.5, 20.0], title="纬度 (°N)", showgrid=False),
     height=700, margin=dict(l=50, r=30, t=60, b=50),
     paper_bgcolor="#fff", plot_bgcolor="#fff", dragmode="pan")
 
@@ -90,7 +90,7 @@ body{{font-family:"Segoe UI",system-ui,sans-serif;background:#fff}}
 .stats span{{background:#f8fafc;border-radius:6px;padding:2px 10px}}
 </style></head><body>
 <div class="top"><h1>MAZU KG 物理层 — NetworkX D8 流向图 & 山洪风险传播</h1>
-<p>全图 {G.number_of_nodes():,} 节点 · {G.number_of_edges():,} 边 | Asir 子图 {len(sns)} 节点 | {DATE}</p>
+<p>全图 {G.number_of_nodes():,} 节点 · {G.number_of_edges():,} 边 | Asir 山区子图 {len(sns)} 节点 | {DATE} | 可缩放平移查看全图</p>
 </div>
 <div class="stats">
 <span>🟢 绿色=低海拔  🟤 棕色=高海拔</span>
