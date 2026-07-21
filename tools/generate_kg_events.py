@@ -112,7 +112,7 @@ for date, dtype, label, lat_min, lat_max, lon_min, lon_max in EVENTS:
         fig.update_layout(
             title=dict(text=f"{date} {label} — {TITLES[dtype]}", font=dict(size=16, color="#1e293b"), x=.5),
             xaxis=dict(range=[lon_min, lon_max], title="经度 (°E)", showgrid=False),
-            yaxis=dict(range=[lat_min, lat_max], title="纬度 (°N)", showgrid=False),
+            yaxis=dict(range=[lat_min, lat_max], title="纬度 (°N)", showgrid=False, scaleanchor="x", scaleratio=1),
             height=650, margin=dict(l=50, r=30, t=55, b=45),
             paper_bgcolor="#fff", plot_bgcolor="#fff", dragmode="pan")
         figs.append((date, label, dtype, desc, fig))

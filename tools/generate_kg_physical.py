@@ -75,7 +75,7 @@ for u, v in uniq[::step]:
 fig.update_layout(
     title=dict(text="MAZU KG 物理层 — D8 地形流向 & 山洪风险传播 (Asir 山区)", font=dict(size=18, color="#1e293b"), x=.5),
     xaxis=dict(range=[41.5, 44.5], title="经度 (°E)", showgrid=False),
-    yaxis=dict(range=[17.5, 20.0], title="纬度 (°N)", showgrid=False),
+    yaxis=dict(range=[17.5, 20.0], title="纬度 (°N)", showgrid=False, scaleanchor="x", scaleratio=1),
     height=700, margin=dict(l=50, r=30, t=60, b=50),
     paper_bgcolor="#fff", plot_bgcolor="#fff", dragmode="pan")
 
