@@ -7,7 +7,7 @@ plt.rcParams['font.sans-serif']=['Microsoft YaHei','SimHei']; plt.rcParams['axes
 OUT=os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),"outputs","feature_importance.png")
 engine=DisasterInference()
 fig,axes=plt.subplots(2,2,figsize=(16,12))
-nm={'flash_flood':'⚡ 暴雨山洪','extreme_heat':'🔥 极端高温','dust_wind':'🌪️ 沙尘强风','coastal_wave':'🌊 沿海风浪'}
+nm={'flash_flood':'暴雨山洪','extreme_heat':'极端高温','dust_wind':'沙尘强风','coastal_wave':'沿海风浪'}
 cs=['#ef4444','#f97316','#eab308','#3b82f6']
 for ax,(dtype,color) in zip(axes.flat,zip(nm.keys(),cs)):
     m=engine.models[dtype]; names=m.model.feature_name(); imp=m.model.feature_importance(importance_type='gain')
