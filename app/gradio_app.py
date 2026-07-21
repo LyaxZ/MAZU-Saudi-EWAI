@@ -204,20 +204,25 @@ def build_ui():
         with gr.Tabs():
             # ── Tab 1: 对话 ──
             with gr.TabItem("💬 智能对话"):
-                chatbot = gr.Chatbot(label="", height=460, elem_id="chatbot", show_label=False)
+                chatbot = gr.Chatbot(label="", height=440, elem_id="chatbot", show_label=False)
                 with gr.Row(elem_classes=["input-row"]):
                     msg = gr.Textbox(placeholder="输入问题...", scale=10, container=False,
                                      show_label=False, max_lines=4)
                     send = gr.Button("发送", variant="primary", scale=1, elem_classes=["send-btn"])
 
-                agent = MazuAgent(verbose=False)
+                _agent = [None]  # 延迟初始化，避免阻塞 Tab 切换
+
+                def get_agent():
+                    if _agent[0] is None:
+                        _agent[0] = MazuAgent(verbose=False)
+                    return _agent[0]
 
                 def respond(message, history):
                     history = history or []
                     yield history + [{"role":"user","content":message},
                                      {"role":"assistant","content":"⏳ 正在分析..."}]
                     full, last = "", ""
-                    for chunk in agent.chat_stream(message):
+                    for chunk in get_agent().chat_stream(message):
                         full += chunk
                         tools = re.findall(r'🔧\s*(\S+)\.\.\.', full)
                         if tools and tools[-1] != last:
@@ -241,8 +246,14 @@ def build_ui():
                     yield history + [{"role":"user","content":message},
                                      {"role":"assistant","content":final}]
 
-                send.click(fn=respond, inputs=[msg,chatbot], outputs=[chatbot]).then(lambda:"",None,msg)
-                msg.submit(fn=respond, inputs=[msg,chatbot], outputs=[chatbot]).then(lambda:"",None,msg)
+                def clear_msg():
+                    return ""
+
+                send.click(fn=respond, inputs=[msg,chatbot], outputs=[chatbot])
+                send.click(fn=clear_msg, outputs=[msg])
+                msg.submit(fn=respond, inputs=[msg,chatbot], outputs=[chatbot])
+                msg.submit(fn=clear_msg, outputs=[msg])
+
                 gr.Examples(
                     examples=["2025年8月15日沙特有山洪风险吗？",
                               "明天利雅得地区会不会有热浪？",
