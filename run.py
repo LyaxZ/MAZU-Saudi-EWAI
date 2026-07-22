@@ -35,12 +35,14 @@ def main():
         return
 
     if args.command == "web":
-        from app.gradio_app import main as web_main
-        web_main()
+        from app.gradio_app import launch_app
+        launch_app(share=args.share, server_port=args.port)
 
     elif args.command == "cli":
         from app.chat_cli import main as cli_main
-        sys.argv = [sys.argv[0]]
+        sys.argv = ["chat_cli"]
+        if args.model:
+            sys.argv.extend(["--model", args.model])
         if args.verbose:
             sys.argv.append("--verbose")
         cli_main()
