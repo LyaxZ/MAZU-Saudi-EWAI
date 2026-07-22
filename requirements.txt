@@ -7,32 +7,29 @@ numpy>=1.24.0
 pandas>=2.0.0
 xarray>=2023.1.0
 netCDF4>=1.6.0
+h5netcdf>=1.0.0
 scipy>=1.10.0
 
 # ---------- 机器学习 ----------
 lightgbm>=4.0.0
 scikit-learn>=1.2.0
-optuna>=3.0.0
 shap>=0.41.0
 
-# ---------- 深度学习 ----------
+# ---------- 深度学习（LSTM 对比实验用，可选） ----------
 torch>=2.0.0
 
 # ---------- 知识图谱 ----------
 networkx>=3.0
-node2vec>=0.4.0
 
 # ---------- LLM 集成 ----------
-openai>=1.0.0
+openai>=1.55.0
 python-dotenv>=1.0.0
 
 # ---------- Web 交付 ----------
 gradio>=4.0.0
 matplotlib>=3.7.0
-cartopy>=0.21.0
+plotly>=5.0.0
 
 # ---------- 开发工具 ----------
-pytest>=7.0.0
-jupyter>=1.0.0
 tqdm>=4.65.0
 pyyaml>=6.0

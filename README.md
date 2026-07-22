@@ -17,42 +17,56 @@
 
 ## 快速开始
 
-### 环境配置
+### 1. 环境配置
 
 ```bash
 # 创建 conda 环境
 conda create -n saudi_analysis python=3.10
 conda activate saudi_analysis
 
-# 安装依赖
+# 安装依赖（必须先 pip install -e .）
 pip install -r requirements.txt
 pip install -e .
 ```
 
-### 配置 API Key
+### 2. 准备数据
+
+将 MAZU 指标 NC 文件放入 `indicators/` 目录，或设置环境变量指向数据目录：
 
 ```bash
-# 创建 .env 文件，填入 DeepSeek API Key
-echo "DEEPSEEK_API_KEY=你的API密钥" > .env
+# Windows
+set MAZU_INDICATORS_DIR=D:\path\to\indicators
+
+# Linux/Mac
+export MAZU_INDICATORS_DIR=/path/to/indicators
 ```
 
-### 启动 Gradio 对话界面
+### 3. 配置 API Key
 
 ```bash
-python app/gradio_app.py
+cp .env.example .env
+# 编辑 .env，填入 DeepSeek API Key
 ```
 
-浏览器打开 `http://127.0.0.1:7860`，即可通过自然语言查询灾害风险。
-
-### 命令行对话
+### 4. 启动
 
 ```bash
-python app/chat_cli.py
+# 统一入口 — Web 界面
+python run.py web
+
+# 命令行对话
+python run.py cli
+
+# 训练所有模型
+python run.py train
+
+# 生成可视化产物
+python run.py tools all
 ```
 
-### Gradio 使用示例
+浏览器打开 `http://127.0.0.1:7860`，通过自然语言查询灾害风险。
 
-在对话框中输入以下问题，Agent 将自动调用工具并回复：
+### 对话示例
 
 | 输入 | Agent 行为 |
 |---|---|
@@ -60,19 +74,9 @@ python app/chat_cli.py
 | `8月28日阿西尔地区有山洪风险吗` | 区域映射 → 模型预测 → KG 影响链 → 处置建议 |
 | `如果明天吉达有山洪红色预警，应该采取什么措施` | 矩阵匹配 → 部门级动作列表 + 受影响设施 |
 
-对话中可实时看到工具调用状态（⏳ 获取风险预测... → ⏳ 分析影响链... → 完成），回复底部灰色小字标注推理来源。
+对话中实时显示工具调用状态，回复底部标注推理来源。
 
-### 数据加载（开发用）
-
-```python
-from data.loader import load_indicators
-ds = load_indicators("2025-01-01", "2025-01-31")
-
-from data.label_builder import build_labels
-labels = build_labels(ds)
-```
-
-### 模型训练与推理
+### 模型训练与推理（Python API）
 
 ```python
 from models.inference import DisasterInference
@@ -267,4 +271,56 @@ mazu_saudi_ewai/
 ├── tests/           # 评估报告/模型重训/阈值调优/真实事件验证
 └── outputs/         # 模型权重(.pkl) + 可视化产物(.html/.png)
 ```
+
+## 部署说明
+
+### 服务器部署步骤
+
+```bash
+# 1. 克隆仓库
+git clone <repo-url> mazu_saudi_ewai
+cd mazu_saudi_ewai
+
+# 2. 创建环境
+conda create -n saudi_analysis python=3.10 -y
+conda activate saudi_analysis
+
+# 3. 安装依赖
+pip install -r requirements.txt
+pip install -e .
+
+# 4. 放置数据
+# 将 NC 指标文件放入 indicators/ 目录
+# 或设置 MAZU_INDICATORS_DIR 指向数据目录
+
+# 5. 配置 API Key
+cp .env.example .env
+nano .env  # 填入 DEEPSEEK_API_KEY
+
+# 6. 训练模型（首次运行需要，约 2 分钟）
+python run.py train
+
+# 7. 启动服务
+python run.py web --port 7860
+```
+
+### 环境变量
+
+| 变量 | 说明 | 默认值 |
+|---|---|---|
+| `DEEPSEEK_API_KEY` | DeepSeek API 密钥（必填） | — |
+| `MAZU_INDICATORS_DIR` | 指标数据目录 | `./indicators` |
+| `MAZU_LLM_MODEL` | 模型名称 | `deepseek-v4-flash` |
+| `MAZU_LLM_BASE_URL` | API 地址 | `https://api.deepseek.com` |
+
+### 可用命令
+
+| 命令 | 说明 |
+|---|---|
+| `python run.py web` | 启动 Gradio Web 界面 |
+| `python run.py web --port 8080` | 指定端口 |
+| `python run.py web --share` | 生成公网分享链接 |
+| `python run.py cli` | 命令行对话模式 |
+| `python run.py train` | 训练并保存四灾害模型 |
+| `python run.py tools all` | 生成全部可视化产物 |
 

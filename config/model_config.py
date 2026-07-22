@@ -5,13 +5,20 @@
 后续可扩大数据范围并切换到 GPU。
 """
 
-import torch
+import logging
+log = logging.getLogger("MAZU")
 
 # ============================================
-# 设备选择
+# 设备选择（延迟加载，避免 LightGBM 不需要时引入 torch）
 # ============================================
-DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
-print(f"[model_config] 检测到设备: {DEVICE}")
+def _detect_device():
+    try:
+        import torch
+        return "cuda" if torch.cuda.is_available() else "cpu"
+    except ImportError:
+        return "cpu"
+
+DEVICE = _detect_device()
 
 # ============================================
 # 训练数据范围
@@ -113,21 +120,21 @@ DISASTER_LABELS = {
 }
 
 # ============================================
-# LightGBM 超参数
+# LightGBM 超参数（经 Optuna 贝叶斯调参优化）
 # ============================================
 LIGHTGBM_PARAMS = {
     "objective": "binary",
     "metric": "auc",
     "boosting_type": "gbdt",
-    "num_leaves": 512,           # 增大以获得完美训练拟合
-    "max_depth": 10,             # 加深以捕获复杂规则
-    "learning_rate": 0.05,       # 提高学习率配合更多迭代
-    "n_estimators": 1000,        # 足够迭代至训练集全对
-    "subsample": 1.0,            # 全量采样，不丢信息
-    "colsample_bytree": 1.0,     # 全量特征
-    "reg_alpha": 0.0,            # 关闭正则化，允许充分拟合
-    "reg_lambda": 0.0,           # 关闭正则化
-    "min_child_samples": 5,      # 降低以拟合边界样本
+    "num_leaves": 217,
+    "max_depth": 5,
+    "learning_rate": 0.0201,
+    "n_estimators": 309,
+    "subsample": 0.9057,
+    "colsample_bytree": 0.7357,
+    "reg_alpha": 0.1855,
+    "reg_lambda": 6.4941,
+    "min_child_samples": 132,
     "verbose": -1,
     "random_state": 42,
     "device": "cpu",

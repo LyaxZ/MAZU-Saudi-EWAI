@@ -69,15 +69,15 @@ class MazuAgent:
     def __init__(
         self,
         api_key: str = None,
-        model: str = "deepseek-v4-flash",
-        base_url: str = "https://api.deepseek.com",
+        model: str = None,
+        base_url: str = None,
         verbose: bool = False,
     ):
         """
         Args:
             api_key: API Key（默认从环境变量 DEEPSEEK_API_KEY 读取）
-            model: 模型名称
-            base_url: API 地址
+            model: 模型名称（默认从 MAZU_LLM_MODEL 读取，回退 deepseek-v4-flash）
+            base_url: API 地址（默认从 MAZU_LLM_BASE_URL 读取，回退 DeepSeek 官方）
             verbose: 是否打印调试信息
         """
         from openai import OpenAI
@@ -86,7 +86,10 @@ class MazuAgent:
         if not self.api_key:
             raise ValueError("请设置 DEEPSEEK_API_KEY 环境变量或传入 api_key 参数")
 
-        self.client = OpenAI(api_key=self.api_key, base_url=base_url)
+        self.model = model or os.environ.get("MAZU_LLM_MODEL", "deepseek-v4-flash")
+        self.base_url = base_url or os.environ.get("MAZU_LLM_BASE_URL", "https://api.deepseek.com")
+
+        self.client = OpenAI(api_key=self.api_key, base_url=self.base_url)
         self.model = model
         self.verbose = verbose
 

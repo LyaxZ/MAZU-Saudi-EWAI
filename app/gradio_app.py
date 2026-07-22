@@ -1,6 +1,5 @@
 ﻿"""MAZU 沙特多灾种预警智能体 — Web 界面"""
 import sys, os, re, logging
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import gradio as gr
 from llm_agent.agent import MazuAgent
@@ -115,6 +114,16 @@ def launch_app(share=False, **kw):
     log.info("MAZU Web 启动")
     app = build_ui()
     app.launch(share=share, css=CSS, **kw)
+
+
+def main():
+    """run.py 入口"""
+    import argparse
+    p = argparse.ArgumentParser()
+    p.add_argument("--share", action="store_true")
+    p.add_argument("--port", type=int, default=7860)
+    args = p.parse_args()
+    launch_app(share=args.share, server_port=args.port)
 
 
 if __name__ == "__main__":

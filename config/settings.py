@@ -12,16 +12,14 @@ INDICATORS_DIR = os.environ.get(
     os.path.join(PROJECT_ROOT, "indicators")
 )
 
-# 如果默认路径不存在，尝试备选路径
-if not os.path.exists(INDICATORS_DIR):
-    _alt_paths = [
-        r"D:\BaiduNetdiskDownload\indicators",
-        r"d:\College\Semester-3\mazu_saudi_ewai\indicators",
-    ]
-    for _p in _alt_paths:
-        if os.path.exists(_p):
-            INDICATORS_DIR = _p
-            break
+# 启动时校验数据目录是否存在
+if not os.path.isdir(INDICATORS_DIR):
+    raise FileNotFoundError(
+        f"数据目录不存在: {INDICATORS_DIR}\n"
+        "请将 NC 指标文件放入 indicators/ 目录，或设置环境变量:\n"
+        "  set MAZU_INDICATORS_DIR=D:\\path\\to\\indicators    (Windows)\n"
+        "  export MAZU_INDICATORS_DIR=/path/to/indicators      (Linux/Mac)"
+    )
 OUTPUTS_DIR = os.path.join(PROJECT_ROOT, "outputs")
 MODELS_DIR = os.path.join(OUTPUTS_DIR, "models")
 REPORTS_DIR = os.path.join(OUTPUTS_DIR, "reports")

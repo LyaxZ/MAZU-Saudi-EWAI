@@ -58,7 +58,8 @@ def main():
 
     parser = argparse.ArgumentParser(description="MAZU 预警智能体 CLI")
     parser.add_argument("--api-key", help="API Key")
-    parser.add_argument("--model", default="deepseek-chat", help="模型名称")
+    parser.add_argument("--model", default=os.environ.get("MAZU_LLM_MODEL", "deepseek-v4-flash"),
+                        help="模型名称 (默认: deepseek-v4-flash)")
     parser.add_argument("--verbose", action="store_true", help="显示调试信息")
     args = parser.parse_args()
 

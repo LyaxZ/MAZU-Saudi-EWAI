@@ -384,9 +384,10 @@ class DisasterInference:
         try:
             ds = load_date_range(start_str, end_date, variables=load_vars,
                                  show_progress=False)
-        except Exception:
+        except Exception as e:
+            log.warning(f"[predict_trend] 数据加载失败 (date={end_date}): {e}")
             return {"trend": [], "direction": "无数据", "change_pct": 0,
-                    "peak_date": "", "error": "数据加载失败"}
+                    "peak_date": "", "error": f"数据加载失败: {e}"}
 
         trend = []
         for day in sorted(ds["day"].values):
@@ -472,7 +473,8 @@ class DisasterInference:
         if "sst_celsius" in feats:
             try:
                 ds_sst = load_date_range(date, date, variables=['sst_celsius'], show_progress=False)
-            except Exception:
+            except Exception as e:
+                log.warning(f"[predict_from_nc] SST 加载失败 (date={date}): {e}")
                 ds_sst = load_date_range(fallback_date, fallback_date, variables=['sst_celsius'], show_progress=False)
             sst_daily = ds_sst['sst_celsius'].mean(dim='time')
             sst_daily = sst_daily.rename({'lat': 'latitude', 'lon': 'longitude'})
