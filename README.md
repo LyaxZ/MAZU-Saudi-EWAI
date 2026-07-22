@@ -6,7 +6,7 @@
 
 本项目面向沙特阿拉伯（16-32°N, 34-56°E），针对**暴雨山洪、极端高温、沙尘强风、沿海风浪**四类高影响灾害，构建「预测→解释→推理→行动」闭环的多灾种预警智能体原型，可作为 MAZU 早期预警系统的算法与决策模块嵌入。
 
-**技术路线**：LightGBM 四灾害独立预测 → NetworkX 知识图谱空间推理 → DeepSeek LLM Agent 自然语言交互。
+**技术路线**：LightGBM 四灾害独立预测 → NetworkX 知识图谱空间推理 → LLM Agent 自然语言交互。
 
 ### 小组分工
 
@@ -119,7 +119,7 @@ python tools/plot_model_comparison.py
 用户自然语言
     ↓
 ┌─────────────────────────────────────┐
-│  顶层：LLM Agent (DeepSeek API)     │  回答「该怎么做？」
+│  顶层：LLM Agent (OpenAI 兼容 API)   │  回答「该怎么做？」
 │  Function Calling 调度三工具        │  意图解析 → 工具编排 → 综合回复
 └──────────────┬──────────────────────┘
                ↓ 风险概率 + SHAP 解释
@@ -249,7 +249,7 @@ python tools/plot_model_comparison.py
 - **机器学习**: LightGBM, Scikit-learn, Optuna, SHAP
 - **深度学习**: PyTorch (LSTM 对比实验)
 - **知识图谱**: NetworkX
-- **LLM 集成**: OpenAI API → DeepSeek (Function Calling)
+- **LLM 集成**: OpenAI 兼容 API (Function Calling)
 - **交付**: Gradio
 - **可视化**: Plotly, Matplotlib, vis.js/pyvis
 

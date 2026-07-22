@@ -175,7 +175,7 @@ python -c "from models.inference import DisasterInference; DisasterInference(tra
 
 ### .env 配置
 ```
-DEEPSEEK_API_KEY=sk-xxxxxxxx
+LLM_API_KEY=sk-xxxxxxxx
 ```
 
 ---
