@@ -13,36 +13,47 @@ log = logging.getLogger("MAZU")
 
 CSS = """
 *{box-sizing:border-box}
-body{background:#f1f5f9!important;font-family:'Segoe UI',system-ui,-apple-system,sans-serif}
-.gradio-container{max-width:80vw!important;margin:24px auto!important;padding:0 16px!important;
+body{background:#f0f2f5!important;font-family:'Segoe UI',system-ui,-apple-system,sans-serif}
+.gradio-container{max-width:90vw!important;margin:20px auto!important;padding:0 12px!important;
   border:none!important;box-shadow:none!important}
 
 /* 顶部标题 */
-.main-header{text-align:center;padding:32px 24px 24px;margin-bottom:16px;
-  background:#fff;border-radius:16px;box-shadow:0 1px 4px rgba(0,0,0,.06)}
+.main-header{text-align:center;padding:28px 24px 20px;margin-bottom:12px;
+  background:#fff;border-radius:14px;box-shadow:0 1px 3px rgba(0,0,0,.05)}
+.main-header h1{font-size:22px;margin:0;color:#1a1a2e;font-weight:700}
+.main-header p{font-size:13px;color:#6b7280;margin:6px 0 0}
 
 /* 对话框 */
-#chatbot{border-radius:16px!important;min-height:480px;background:#fff!important;
-  box-shadow:0 1px 4px rgba(0,0,0,.06);border:none!important}
-#chatbot > div{padding:24px!important}
+#chatbot{border-radius:14px!important;min-height:500px;background:#fff!important;
+  box-shadow:0 1px 3px rgba(0,0,0,.05);border:none!important}
+#chatbot > div{padding:20px!important}
 
-/* 输入区 - 去掉 Gradio 默认边框 */
-.input-box{background:#fff;border-top:1px solid #f1f5f9;padding:16px 24px;
-  border-radius:0 0 16px 16px;box-shadow:0 1px 4px rgba(0,0,0,.06)}
+/* 输入区 */
+.input-box{background:#fff;border-top:1px solid #f0f0f0;padding:14px 20px;
+  border-radius:0 0 14px 14px;box-shadow:0 1px 3px rgba(0,0,0,.05)}
 .input-box textarea, .input-box input{
-  border:1px solid #e2e8f0!important;border-radius:12px!important;
-  padding:14px 18px!important;font-size:15px!important;
-  transition:border-color .2s;outline:none!important;box-shadow:none!important}
+  border:1px solid #e5e7eb!important;border-radius:10px!important;
+  padding:12px 16px!important;font-size:14px!important;line-height:1.5!important;
+  transition:all .2s;outline:none!important;box-shadow:none!important;
+  background:#fafbfc!important}
 .input-box textarea:focus, .input-box input:focus{
-  border-color:#4f46e5!important;box-shadow:0 0 0 3px rgba(79,70,229,.1)!important}
+  border-color:#6366f1!important;background:#fff!important;
+  box-shadow:0 0 0 3px rgba(99,102,241,.08)!important}
 
 /* 按钮 */
 .send-btn, button.primary{
-  background:#4f46e5!important;color:#fff!important;font-weight:600!important;
-  padding:14px 32px!important;border-radius:12px!important;border:none!important;
-  box-shadow:none!important;transition:all .2s}
+  background:#6366f1!important;color:#fff!important;font-weight:600!important;
+  padding:12px 28px!important;border-radius:10px!important;border:none!important;
+  box-shadow:none!important;cursor:pointer!important;transition:all .15s}
 .send-btn:hover, button.primary:hover{
-  background:#4338ca!important;transform:translateY(-1px);box-shadow:0 2px 8px rgba(79,70,229,.3)!important}
+  background:#4f46e5!important;box-shadow:0 2px 6px rgba(99,102,241,.25)!important}
+
+/* 示例标签 */
+.gr-examples label{color:#6b7280!important;font-size:12px!important}
+
+/* 来源引用 */
+.source-cite{font-size:11px;color:#9ca3af;margin-top:8px;padding-top:6px;border-top:1px solid #f0f0f0}
+"""
 
 /* 来源引用 */
 .source-cite{font-size:11px;color:#94a3b8;margin-top:8px;padding-top:6px;border-top:1px solid #f1f5f9}
