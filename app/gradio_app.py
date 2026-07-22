@@ -12,74 +12,106 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(me
 log = logging.getLogger("MAZU")
 
 CSS = """
-/* ====== 全局背景：浅蓝青色渐变 ====== */
+/* ====== 全局：柔和蓝青背景 + 微纹理质感 ====== */
 body, .gradio-app{
-  background:linear-gradient(160deg,#e0f2fe 0%,#e0f7fa 40%,#ecfeff 100%)!important;
-  font-family:'Segoe UI',system-ui,sans-serif!important}
+  background:
+    radial-gradient(circle at 15% 20%, rgba(186,230,253,.35) 0%, transparent 45%),
+    radial-gradient(circle at 85% 75%, rgba(165,243,252,.3) 0%, transparent 50%),
+    linear-gradient(160deg,#eef6fb 0%,#e0f2fe 45%,#ecfeff 100%)!important;
+  font-family:'Segoe UI',system-ui,-apple-system,sans-serif!important;
+  min-height:100vh}
 
-/* ====== 主容器：居中、75vw 宽度 ====== */
-.gradio-container{max-width:75vw!important;margin:20px auto!important;
+/* ====== 主容器 ====== */
+.gradio-container{max-width:75vw!important;margin:18px auto!important;
   padding:0!important;background:transparent!important;border:none!important}
 
-/* ====== 去掉所有 Gradio 默认边框和阴影 ====== */
-.gradio-container *, .gradio-container fieldset, .gradio-container .panel,
-.gradio-container .wrap, .gradio-container .prose{
-  border:none!important;box-shadow:none!important}
+/* ====== 清除 Gradio 默认边框 ====== */
+.gradio-container fieldset, .gradio-container .panel,
+.gradio-container .form, .gradio-container .block{
+  border:none!important;box-shadow:none!important;background:transparent!important}
 
-/* ====== 标题栏 ====== */
-.main-header{text-align:center;padding:22px 28px 16px;margin-bottom:10px;
-  background:#fff!important;border-radius:14px;
-  border-left:4px solid #0891b2!important}
-.main-header h1{font-size:22px;color:#155e75;font-weight:700}
-.main-header p{font-size:13px;color:#0891b2}
+/* ====== 标题栏：玻璃质感 ====== */
+.main-header{
+  text-align:center;padding:24px 32px 20px;margin-bottom:12px;
+  background:rgba(255,255,255,.85)!important;backdrop-filter:blur(12px);
+  border-radius:16px;box-shadow:0 4px 20px rgba(8,145,178,.08);
+  border:1px solid rgba(8,145,178,.12)}
+.main-header h1{
+  font-size:22px;color:#0c4a6e;font-weight:700;
+  background:linear-gradient(90deg,#0e7490,#0891b2);-webkit-background-clip:text;
+  -webkit-text-fill-color:transparent;margin:0}
+.main-header p{font-size:13px;color:#0891b2;margin:6px 0 0;letter-spacing:.5px}
 
-/* ====== 聊天区域：浅蓝背景 ====== */
-#chatbot{border-radius:14px!important;min-height:500px;
-  background:#f0f9ff!important;box-shadow:0 1px 4px rgba(0,0,0,.06)!important}
-#chatbot > div{padding:18px!important}
+/* ====== 聊天区：毛玻璃 ====== */
+#chatbot{
+  border-radius:16px!important;min-height:500px;
+  background:rgba(240,249,255,.7)!important;backdrop-filter:blur(8px);
+  box-shadow:0 4px 24px rgba(8,145,178,.06)!important;
+  border:1px solid rgba(8,145,178,.1)!important}
+#chatbot > div{padding:20px!important}
 
-/* assistant 气泡 */
-#chatbot .bubble-wrap:first-child .bubble,
-#chatbot div[class*="message"]:not(.user){
-  background:#e0f2fe!important;border-radius:12px!important}
-/* user 气泡 */
-#chatbot .bubble-wrap.user .bubble,
-#chatbot div[class*="user"] div[class*="message"]{
-  background:#0284c7!important;color:#fff!important;border-radius:12px!important}
+/* 助手气泡：柔和白 */
+#chatbot [class*="bot"] [class*="message"],
+#chatbot [class*="bot"] [class*="bubble"],
+#chatbot .bubble:not(.user){
+  background:#fff!important;border-radius:14px!important;
+  box-shadow:0 1px 3px rgba(0,0,0,.05)!important;
+  border:1px solid #e0f2fe!important;padding:14px 18px!important}
+/* 用户气泡：青蓝 */
+#chatbot [class*="user"] [class*="message"],
+#chatbot [class*="user"] [class*="bubble"],
+#chatbot .bubble.user{
+  background:linear-gradient(135deg,#0e7490,#0891b2)!important;color:#fff!important;
+  border-radius:14px!important;box-shadow:0 2px 8px rgba(8,145,178,.2)!important;
+  padding:14px 18px!important}
 
-/* ====== 输入区 ====== */
-.input-box{background:#fff!important;border-top:1px solid #cffafe!important;
-  padding:12px 16px!important;border-radius:0 0 14px 14px!important;
-  box-shadow:0 1px 4px rgba(0,0,0,.06)!important}
+/* ====== 输入区：贴底玻璃 ====== */
+.input-box{
+  background:rgba(255,255,255,.9)!important;backdrop-filter:blur(8px);
+  border-top:1px solid rgba(8,145,178,.12)!important;
+  padding:14px 18px!important;border-radius:0 0 16px 16px!important;
+  box-shadow:0 4px 20px rgba(8,145,178,.06)!important}
 
 /* 输入框 */
 .input-box textarea, .input-box input[type="text"],
 .input-box [data-testid="textbox"] textarea{
-  border:1.5px solid #bae6fd!important;border-radius:10px!important;
-  padding:12px 16px!important;font-size:14px!important;background:#f0f9ff!important;
-  outline:none!important;box-shadow:none!important}
+  border:1.5px solid #bae6fd!important;border-radius:12px!important;
+  padding:14px 18px!important;font-size:15px!important;
+  background:rgba(240,249,255,.6)!important;
+  outline:none!important;box-shadow:none!important;transition:all .2s}
 .input-box textarea:focus, .input-box input[type="text"]:focus{
   border-color:#0891b2!important;background:#fff!important;
-  box-shadow:0 0 0 3px rgba(8,145,178,.15)!important}
+  box-shadow:0 0 0 4px rgba(8,145,178,.12)!important}
 
-/* ====== 按钮 ====== */
+/* ====== 按钮：渐变 + 阴影 ====== */
 .send-btn, button.primary, button[class*="primary"]{
-  background:#0891b2!important;color:#fff!important;font-weight:600!important;
-  padding:12px 28px!important;border-radius:10px!important;border:none!important;
-  box-shadow:0 2px 6px rgba(8,145,178,.2)!important}
+  background:linear-gradient(135deg,#0e7490 0%,#0891b2 100%)!important;
+  color:#fff!important;font-weight:600!important;
+  padding:13px 32px!important;border-radius:12px!important;border:none!important;
+  box-shadow:0 4px 12px rgba(8,145,178,.25)!important;transition:all .2s!important}
 .send-btn:hover, button.primary:hover, button[class*="primary"]:hover{
-  background:#0e7490!important;box-shadow:0 3px 10px rgba(8,145,178,.3)!important}
+  background:linear-gradient(135deg,#0891b2 0%,#06b6d4 100%)!important;
+  box-shadow:0 6px 18px rgba(8,145,178,.35)!important;transform:translateY(-1px)}
+.send-btn:active, button.primary:active{transform:translateY(0)}
 
 /* ====== 示例按钮 ====== */
-.gr-examples label{color:#0891b2!important;font-size:12px!important;font-weight:600!important}
+.gr-examples label{color:#0e7490!important;font-size:12px!important;font-weight:600!important}
 button[class*="example"], .gr-examples button{
-  background:#ecfeff!important;border:1.5px solid #a5f3fc!important;
-  color:#155e75!important;border-radius:8px!important}
+  background:rgba(236,254,255,.8)!important;border:1.5px solid #a5f3fc!important;
+  color:#155e75!important;border-radius:10px!important;transition:all .15s}
 button[class*="example"]:hover, .gr-examples button:hover{
-  background:#cffafe!important;border-color:#0891b2!important}
+  background:#cffafe!important;border-color:#0891b2!important;
+  box-shadow:0 2px 8px rgba(8,145,178,.15)!important}
+
+/* ====== 滚动条 ====== */
+#chatbot::-webkit-scrollbar{width:6px}
+#chatbot::-webkit-scrollbar-track{background:transparent}
+#chatbot::-webkit-scrollbar-thumb{background:#bae6fd;border-radius:3px}
+#chatbot::-webkit-scrollbar-thumb:hover{background:#7dd3fc}
 
 /* ====== 来源引用 ====== */
-.source-cite{font-size:11px;color:#67e8f9;margin-top:8px;padding-top:6px;border-top:1px solid #cffafe}
+.source-cite{font-size:11px;color:#67e8f9;margin-top:10px;padding-top:8px;
+  border-top:1px solid rgba(8,145,178,.1)}
 """
 
 
