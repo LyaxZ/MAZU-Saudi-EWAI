@@ -12,106 +12,90 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(me
 log = logging.getLogger("MAZU")
 
 CSS = """
-/* ====== 全局：柔和蓝青背景 + 微纹理质感 ====== */
+/* ====== 全局背景 ====== */
 body, .gradio-app{
-  background:
-    radial-gradient(circle at 15% 20%, rgba(186,230,253,.35) 0%, transparent 45%),
-    radial-gradient(circle at 85% 75%, rgba(165,243,252,.3) 0%, transparent 50%),
-    linear-gradient(160deg,#eef6fb 0%,#e0f2fe 45%,#ecfeff 100%)!important;
-  font-family:'Segoe UI',system-ui,-apple-system,sans-serif!important;
-  min-height:100vh}
+  background:linear-gradient(160deg,#eef6fb 0%,#e0f2fe 45%,#ecfeff 100%)!important;
+  font-family:'Segoe UI',system-ui,sans-serif!important}
 
 /* ====== 主容器 ====== */
 .gradio-container{max-width:75vw!important;margin:18px auto!important;
   padding:0!important;background:transparent!important;border:none!important}
 
-/* ====== 清除 Gradio 默认边框 ====== */
-.gradio-container fieldset, .gradio-container .panel,
-.gradio-container .form, .gradio-container .block{
-  border:none!important;box-shadow:none!important;background:transparent!important}
+/* ====== 清除 Gradio 默认外框（精准） ====== */
+.gradio-container > .form,
+.gradio-container fieldset{border:none!important;background:transparent!important}
 
-/* ====== 标题栏：玻璃质感 ====== */
-.main-header{
-  text-align:center;padding:24px 32px 20px;margin-bottom:12px;
-  background:rgba(255,255,255,.85)!important;backdrop-filter:blur(12px);
-  border-radius:16px;box-shadow:0 4px 20px rgba(8,145,178,.08);
+/* ====== 标题栏 ====== */
+.main-header{text-align:center;padding:22px 30px 18px;margin-bottom:12px;
+  background:#fff!important;border-radius:14px;
+  box-shadow:0 2px 12px rgba(8,145,178,.08);
   border:1px solid rgba(8,145,178,.12)}
-.main-header h1{
-  font-size:22px;color:#0c4a6e;font-weight:700;
-  background:linear-gradient(90deg,#0e7490,#0891b2);-webkit-background-clip:text;
-  -webkit-text-fill-color:transparent;margin:0}
-.main-header p{font-size:13px;color:#0891b2;margin:6px 0 0;letter-spacing:.5px}
+.main-header h1{font-size:22px;color:#0c4a6e;font-weight:700;margin:0}
+.main-header p{font-size:13px;color:#0891b2;margin:6px 0 0}
 
-/* ====== 聊天区：毛玻璃 ====== */
-#chatbot{
-  border-radius:16px!important;min-height:500px;
-  background:rgba(240,249,255,.7)!important;backdrop-filter:blur(8px);
-  box-shadow:0 4px 24px rgba(8,145,178,.06)!important;
+/* ====== 聊天区 ====== */
+#chatbot{border-radius:14px!important;min-height:500px;
+  background:#f0f9ff!important;box-shadow:0 2px 12px rgba(8,145,178,.06)!important;
   border:1px solid rgba(8,145,178,.1)!important}
-#chatbot > div{padding:20px!important}
+#chatbot .messages{padding:16px!important}
 
-/* 助手气泡：柔和白 */
-#chatbot [class*="bot"] [class*="message"],
-#chatbot [class*="bot"] [class*="bubble"],
-#chatbot .bubble:not(.user){
-  background:#fff!important;border-radius:14px!important;
-  box-shadow:0 1px 3px rgba(0,0,0,.05)!important;
-  border:1px solid #e0f2fe!important;padding:14px 18px!important}
-/* 用户气泡：青蓝 */
-#chatbot [class*="user"] [class*="message"],
-#chatbot [class*="user"] [class*="bubble"],
-#chatbot .bubble.user{
-  background:linear-gradient(135deg,#0e7490,#0891b2)!important;color:#fff!important;
-  border-radius:14px!important;box-shadow:0 2px 8px rgba(8,145,178,.2)!important;
-  padding:14px 18px!important}
+/* 气泡本身：只作用于 .message 元素 */
+#chatbot .message{border-radius:12px!important;padding:12px 16px!important;margin:6px 0!important;
+  border:none!important;font-size:14px!important;line-height:1.6!important}
+#chatbot .message.bot{background:#fff!important;box-shadow:0 1px 3px rgba(0,0,0,.04)!important}
+#chatbot .message.user{background:linear-gradient(135deg,#0e7490,#0891b2)!important;color:#fff!important}
 
-/* ====== 输入区：贴底玻璃 ====== */
-.input-box{
-  background:rgba(255,255,255,.9)!important;backdrop-filter:blur(8px);
-  border-top:1px solid rgba(8,145,178,.12)!important;
-  padding:14px 18px!important;border-radius:0 0 16px 16px!important;
-  box-shadow:0 4px 20px rgba(8,145,178,.06)!important}
+/* 隐藏 Gradio 内部多余包装框 */
+#chatbot .message > div, #chatbot .message > span,
+#chatbot .message-wrap, #chatbot .message-row{
+  border:none!important;background:transparent!important;padding:0!important;margin:0!important}
+#chatbot [data-testid="bot"], #chatbot [data-testid="user"]{
+  border:none!important;background:transparent!important;padding:0!important}
 
-/* 输入框 */
-.input-box textarea, .input-box input[type="text"],
-.input-box [data-testid="textbox"] textarea{
-  border:1.5px solid #bae6fd!important;border-radius:12px!important;
-  padding:14px 18px!important;font-size:15px!important;
-  background:rgba(240,249,255,.6)!important;
-  outline:none!important;box-shadow:none!important;transition:all .2s}
-.input-box textarea:focus, .input-box input[type="text"]:focus{
+/* 复制按钮：小巧 */
+#chatbot .copy-button, #chatbot button[aria-label*="copy"],
+#chatbot button[title*="复制"]{
+  padding:2px 6px!important;font-size:11px!important;border-radius:4px!important;
+  min-width:auto!important;width:auto!important;height:auto!important;
+  background:transparent!important;border:none!important;opacity:.4!important}
+#chatbot .copy-button:hover{opacity:.8!important}
+
+/* ====== 输入区 ====== */
+.input-box{background:#fff!important;border-top:1px solid #cffafe!important;
+  padding:12px 16px!important;border-radius:0 0 14px 14px!important;
+  box-shadow:0 2px 12px rgba(8,145,178,.06)!important}
+.input-box > div{border:none!important;background:transparent!important;padding:0!important}
+
+.input-box textarea{
+  border:1.5px solid #bae6fd!important;border-radius:10px!important;
+  padding:12px 16px!important;font-size:14px!important;background:#f0f9ff!important;
+  outline:none!important;box-shadow:none!important}
+.input-box textarea:focus{
   border-color:#0891b2!important;background:#fff!important;
-  box-shadow:0 0 0 4px rgba(8,145,178,.12)!important}
+  box-shadow:0 0 0 3px rgba(8,145,178,.12)!important}
 
-/* ====== 按钮：渐变 + 阴影 ====== */
-.send-btn, button.primary, button[class*="primary"]{
-  background:linear-gradient(135deg,#0e7490 0%,#0891b2 100%)!important;
-  color:#fff!important;font-weight:600!important;
-  padding:13px 32px!important;border-radius:12px!important;border:none!important;
-  box-shadow:0 4px 12px rgba(8,145,178,.25)!important;transition:all .2s!important}
-.send-btn:hover, button.primary:hover, button[class*="primary"]:hover{
-  background:linear-gradient(135deg,#0891b2 0%,#06b6d4 100%)!important;
-  box-shadow:0 6px 18px rgba(8,145,178,.35)!important;transform:translateY(-1px)}
-.send-btn:active, button.primary:active{transform:translateY(0)}
+/* ====== 按钮 ====== */
+.send-btn, button.primary{
+  background:linear-gradient(135deg,#0e7490,#0891b2)!important;color:#fff!important;
+  font-weight:600!important;padding:12px 28px!important;border-radius:10px!important;
+  border:none!important;box-shadow:0 2px 8px rgba(8,145,178,.2)!important}
+.send-btn:hover, button.primary:hover{
+  background:linear-gradient(135deg,#0891b2,#06b6d4)!important;
+  box-shadow:0 4px 12px rgba(8,145,178,.3)!important}
 
-/* ====== 示例按钮 ====== */
+/* ====== 示例 ====== */
 .gr-examples label{color:#0e7490!important;font-size:12px!important;font-weight:600!important}
-button[class*="example"], .gr-examples button{
-  background:rgba(236,254,255,.8)!important;border:1.5px solid #a5f3fc!important;
-  color:#155e75!important;border-radius:10px!important;transition:all .15s}
-button[class*="example"]:hover, .gr-examples button:hover{
-  background:#cffafe!important;border-color:#0891b2!important;
-  box-shadow:0 2px 8px rgba(8,145,178,.15)!important}
+.gr-examples button{background:#ecfeff!important;border:1.5px solid #a5f3fc!important;
+  color:#155e75!important;border-radius:8px!important;padding:4px 10px!important;font-size:12px!important}
+.gr-examples button:hover{background:#cffafe!important;border-color:#0891b2!important}
 
 /* ====== 滚动条 ====== */
 #chatbot::-webkit-scrollbar{width:6px}
 #chatbot::-webkit-scrollbar-track{background:transparent}
 #chatbot::-webkit-scrollbar-thumb{background:#bae6fd;border-radius:3px}
-#chatbot::-webkit-scrollbar-thumb:hover{background:#7dd3fc}
 
 /* ====== 来源引用 ====== */
-.source-cite{font-size:11px;color:#67e8f9;margin-top:10px;padding-top:8px;
-  border-top:1px solid rgba(8,145,178,.1)}
+.source-cite{font-size:11px;color:#67e8f9;margin-top:8px;padding-top:6px;border-top:1px solid #cffafe}
 """
 
 
@@ -153,11 +137,11 @@ def build_ui():
                     {"role": "user", "content": message},
                     {"role": "assistant",
                      "content": f"❌ **系统初始化失败**\n\n{init_err}\n\n请检查 `.env` 文件中的 LLM_API_KEY / LLM_BASE_URL / LLM_MODEL 是否已正确配置。"}
-                ]
+                ], ""
                 return
 
             yield history + [{"role": "user", "content": message},
-                             {"role": "assistant", "content": "⏳"}]
+                             {"role": "assistant", "content": "⏳"}], ""
             full, last = "", ""
             for chunk in agent.chat_stream(message):
                 full += chunk
@@ -169,7 +153,7 @@ def build_ui():
                          "search_similar_cases": "检索案例"}
                     yield history + [{"role": "user", "content": message},
                                      {"role": "assistant",
-                                      "content": f"⏳ {n.get(last, '处理中')}..."}]
+                                      "content": f"⏳ {n.get(last, '处理中')}..."}], ""
             clean = re.sub(r'\n?🔧[^\n]*\n', '\n', full)
             clean = re.sub(r'\n?✅[^\n]*\n', '\n', clean)
             clean = re.sub(r'^\s*---\s*\n+', '', clean)
@@ -182,12 +166,10 @@ def build_ui():
                 final += f'\n<div class="source-cite">{src.replace(chr(10), " · ")}</div>'
             final = re.sub(r'\n{3,}', '\n\n', final)
             yield history + [{"role": "user", "content": message},
-                             {"role": "assistant", "content": final}]
+                             {"role": "assistant", "content": final}], ""
 
-        send.click(fn=respond, inputs=[msg, chatbot], outputs=[chatbot]) \
-            .then(fn=lambda: gr.update(value=""), outputs=[msg])
-        msg.submit(fn=respond, inputs=[msg, chatbot], outputs=[chatbot]) \
-            .then(fn=lambda: gr.update(value=""), outputs=[msg])
+        send.click(fn=respond, inputs=[msg, chatbot], outputs=[chatbot, msg])
+        msg.submit(fn=respond, inputs=[msg, chatbot], outputs=[chatbot, msg])
         gr.Examples(
             examples=["8月28日阿西尔地区有山洪风险吗",
                        "明天利雅得会有热浪吗",
