@@ -118,7 +118,8 @@ def compute_all_metrics(
                 metrics["AUC"] = float(roc_auc_score(yt, y_proba))
             else:
                 metrics["AUC"] = float("nan")
-        except Exception:
+        except Exception as e:
+            log.warning(f"[metrics] AUC 计算失败: {e}")
             metrics["AUC"] = float("nan")
 
     return metrics

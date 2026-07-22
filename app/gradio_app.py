@@ -50,7 +50,9 @@ def build_ui():
             <p>暴雨山洪 · 极端高温 · 沙尘强风 · 沿海风浪 ｜ LightGBM · 知识图谱 · LLM Agent</p>
         </div>""")
 
-        chatbot = gr.Chatbot(label="", height=520, elem_id="chatbot", show_label=False)
+        chatbot = gr.Chatbot(label="", height=520, elem_id="chatbot", show_label=False,
+            value=[{"role": "assistant",
+                    "content": "👋 我是 **MAZU 沙特多灾种预警智能体**。\n\n我可以帮你查询四类灾害风险：\n- ⚡ **暴雨山洪** — 如「8月28日阿西尔有山洪风险吗」\n- 🔥 **极端高温** — 如「明天利雅得会有热浪吗」\n- 🌪️ **沙尘强风** — 如「5月中旬沙特有沙尘暴吗」\n- 🌊 **沿海风浪** — 如「红海沿岸有没有风浪预警」\n\n也可以问处置建议，如「如果吉达山洪红色预警该怎么办？」"}])
         with gr.Row(elem_classes=["input-box"]):
             msg = gr.Textbox(
                 placeholder="输入问题，如：明天利雅得会有热浪吗？",
@@ -58,18 +60,33 @@ def build_ui():
             send = gr.Button("发送", variant="primary", scale=1, elem_classes=["send-btn"])
 
         _agent = [None]
+        _first_load_error = [""]
 
         def get_agent():
             if _agent[0] is None:
-                _agent[0] = MazuAgent(verbose=False)
-            return _agent[0]
+                try:
+                    _agent[0] = MazuAgent(verbose=False)
+                    _first_load_error[0] = ""
+                except Exception as e:
+                    _first_load_error[0] = str(e)
+                    log.error(f"Agent 初始化失败: {e}")
+            return _agent[0], _first_load_error[0]
 
         def respond(message, history):
             history = history or []
+            agent, init_err = get_agent()
+            if init_err:
+                yield history + [
+                    {"role": "user", "content": message},
+                    {"role": "assistant",
+                     "content": f"❌ **系统初始化失败**\n\n{init_err}\n\n请检查 `.env` 文件中的 LLM_API_KEY / LLM_BASE_URL / LLM_MODEL 是否已正确配置。"}
+                ]
+                return
+
             yield history + [{"role": "user", "content": message},
                              {"role": "assistant", "content": "⏳"}]
             full, last = "", ""
-            for chunk in get_agent().chat_stream(message):
+            for chunk in agent.chat_stream(message):
                 full += chunk
                 tools = re.findall(r'🔧\s*(\S+)\.\.\.', full)
                 if tools and tools[-1] != last:
@@ -99,10 +116,10 @@ def build_ui():
         msg.submit(fn=respond, inputs=[msg, chatbot], outputs=[chatbot]) \
             .then(fn=lambda: "", outputs=[msg])
         gr.Examples(
-            examples=["2025年8月15日沙特有山洪风险吗？",
-                       "明天利雅得地区会不会有热浪？",
-                       "红海沿岸有没有风浪预警？",
-                       "看看8月20日的沙尘暴预测"],
+            examples=["8月28日阿西尔地区有山洪风险吗",
+                       "明天利雅得会有热浪吗",
+                       "如果明天吉达有山洪红色预警，应该采取什么措施",
+                       "5月中旬沙特有沙尘暴吗"],
             inputs=msg)
 
     return app

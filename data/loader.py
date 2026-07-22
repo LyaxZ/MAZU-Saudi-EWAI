@@ -132,10 +132,10 @@ def load_date_range(
             # 三级回退: decode_timedelta=False → 默认解码 → h5netcdf引擎
             try:
                 ds = xr.open_dataset(fp, decode_timedelta=False)
-            except Exception:
+            except Exception as e1:
                 try:
                     ds = xr.open_dataset(fp)
-                except Exception:
+                except Exception as e2:
                     ds = xr.open_dataset(fp, engine='h5netcdf')
             if variables is not None:
                 available = [v for v in variables if v in ds.data_vars]

@@ -2,24 +2,11 @@
 """
 MAZU 预警智能体 — 命令行对话界面
 
-用法:
-    # 在 .env 文件中设置 API Key，然后直接运行
-    python app/chat_cli.py
-
-    # 或通过命令行指定
-    python app/chat_cli.py --api-key sk-xxxxxxxx
-
-支持的命令:
-    /help     - 显示帮助
-    /example  - 显示示例问题
-    /clear    - 清屏
-    /quit     - 退出
+用法: python -m app.chat_cli  或  python app/chat_cli.py (需先 pip install -e .)
 """
 
 import sys
 import os
-
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from llm_agent.agent import MazuAgent
 

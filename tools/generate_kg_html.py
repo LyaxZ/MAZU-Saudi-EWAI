@@ -1,6 +1,5 @@
 """生成知识图谱 HTML — 纯因子→灾害关系 + 1-hop筛选"""
 import sys, os, json
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 OUT = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "outputs", "knowledge_graph.html")
 

@@ -23,9 +23,6 @@ from typing import Dict, List, Optional
 
 import numpy as np
 
-sys.path.insert(0, os.path.dirname(os.path.dirname(
-    os.path.dirname(os.path.dirname(os.path.abspath(__file__))))))
-
 from data.loader import load_date_range
 from models.inference import DisasterInference, _prepare_features, add_latlon_features
 from config.model_config import DISASTER_FEATURES, DISASTER_THRESHOLDS
@@ -182,15 +179,15 @@ class PredictTool:
                                  if f not in ("lat_sin","lat_cos","lon_sin","lon_cos","sst_celsius")]
                     df = load_to_dataframe(date, date, variables=load_vars, show_progress=False).fillna(0)
                     explanation = self.engine.explain(df, disaster_type)
-                except Exception:
-                    pass  # SHAP 失败不影响主流程
+                except Exception as e:
+                    log.debug(f"[predict_tool] SHAP 分析失败: {e}")  # SHAP 失败不影响主流程
 
             # 时序趋势分析
             trend = None
             try:
                 trend = self.engine.predict_trend(date, disaster_type)
-            except Exception:
-                pass
+            except Exception as e:
+                log.debug(f"[predict_tool] 趋势分析失败: {e}")
 
             return {
                 "status": "success",
