@@ -43,6 +43,9 @@ body, .gradio-app{
 #chatbot .message{border-radius:12px!important;padding:12px 16px!important;
   margin:8px 12px!important;border:none!important;font-size:14px!important;line-height:1.6!important}
 #chatbot .message.user{margin-right:0!important}
+/* 气泡内文字：去除多余右内边距 */
+#chatbot .message p, #chatbot .message span, #chatbot .message div{
+  padding-right:0!important;margin-right:0!important}
 #chatbot .message.bot{background:#fff!important;box-shadow:0 1px 3px rgba(0,0,0,.04)!important}
 #chatbot .message.user{background:#e0f2fe!important;color:#0c4a6e!important;
   border:1px solid #bae6fd!important}
