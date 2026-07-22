@@ -37,13 +37,14 @@ body, .gradio-app{
 #chatbot{border-radius:14px!important;min-height:500px;
   background:#f0f9ff!important;box-shadow:0 2px 12px rgba(8,145,178,.06)!important;
   border:1px solid rgba(8,145,178,.1)!important}
-#chatbot .messages{padding:16px!important}
+#chatbot .messages{padding:16px 20px!important}
 
 /* 气泡本身：只作用于 .message 元素 */
-#chatbot .message{border-radius:12px!important;padding:12px 16px!important;margin:6px 0!important;
-  border:none!important;font-size:14px!important;line-height:1.6!important}
+#chatbot .message{border-radius:12px!important;padding:12px 16px!important;
+  margin:8px 12px!important;border:none!important;font-size:14px!important;line-height:1.6!important}
 #chatbot .message.bot{background:#fff!important;box-shadow:0 1px 3px rgba(0,0,0,.04)!important}
-#chatbot .message.user{background:linear-gradient(135deg,#0e7490,#0891b2)!important;color:#fff!important}
+#chatbot .message.user{background:#e0f2fe!important;color:#0c4a6e!important;
+  border:1px solid #bae6fd!important}
 
 /* 隐藏 Gradio 内部多余包装框 */
 #chatbot .message > div, #chatbot .message > span,
