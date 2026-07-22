@@ -39,13 +39,18 @@ body, .gradio-app{
   border:1px solid rgba(8,145,178,.1)!important}
 #chatbot .messages{padding:16px 20px!important}
 
-/* 气泡本身：只作用于 .message 元素 */
-#chatbot .message{border-radius:12px!important;padding:12px 16px!important;
+/* 气泡本身 */
+#chatbot .message{border-radius:12px!important;padding:10px 14px!important;
   margin:8px 12px!important;border:none!important;font-size:14px!important;line-height:1.6!important}
-/* 气泡内文字：去除 Gradio 默认内边距 */
-#chatbot .message p, #chatbot .message span, #chatbot .message div,
-#chatbot .message li, #chatbot .message ul{
-  padding:0!important;margin:4px 0!important}
+/* 气泡内所有子元素去多余间距 */
+#chatbot .message *{padding:0!important;margin:2px 0!important;
+  text-indent:0!important;display:block!important}
+/* 行内元素恢复内联 */
+#chatbot .message strong, #chatbot .message em, #chatbot .message code{
+  display:inline!important}
+/* 列表恢复列表样式 */
+#chatbot .message ul, #chatbot .message ol{padding-left:20px!important}
+#chatbot .message li{margin:1px 0!important;display:list-item!important}
 #chatbot .message.bot{background:#fff!important;box-shadow:0 1px 3px rgba(0,0,0,.04)!important}
 #chatbot .message.user{background:#e0f2fe!important;color:#0c4a6e!important;
   border:1px solid #bae6fd!important}
