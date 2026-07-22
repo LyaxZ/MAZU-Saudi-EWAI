@@ -76,23 +76,29 @@ class MazuAgent:
         """
         Args:
             api_key: API Key（默认从环境变量 LLM_API_KEY 读取）
-            model: 模型名称（默认从 LLM_MODEL 读取，回退 deepseek-v4-flash）
-            base_url: API 地址（默认从 LLM_BASE_URL 读取，回退 DeepSeek 官方）
+            model: 模型名称（默认从 LLM_MODEL 读取）
+            base_url: API 地址（默认从 LLM_BASE_URL 读取）
             verbose: 是否打印调试信息
         """
         from openai import OpenAI
 
         self.api_key = api_key or os.environ.get("LLM_API_KEY", "")
-        if not self.api_key:
-            raise ValueError(
-                "未设置 LLM_API_KEY 环境变量。\n"
-                "请复制 .env.example 为 .env 并填入 API Key，或设置环境变量:\n"
-                "  set LLM_API_KEY=your-key    (Windows)\n"
-                "  export LLM_API_KEY=your-key  (Linux/Mac)"
-            )
+        self.model = model or os.environ.get("LLM_MODEL", "")
+        self.base_url = base_url or os.environ.get("LLM_BASE_URL", "")
 
-        self.model = model or os.environ.get("LLM_MODEL", "deepseek-v4-flash")
-        self.base_url = base_url or os.environ.get("LLM_BASE_URL", "https://api.deepseek.com")
+        missing = []
+        if not self.api_key:
+            missing.append("LLM_API_KEY")
+        if not self.model:
+            missing.append("LLM_MODEL")
+        if not self.base_url:
+            missing.append("LLM_BASE_URL")
+        if missing:
+            raise ValueError(
+                f"缺少环境变量: {', '.join(missing)}\n"
+                "请复制 .env.example 为 .env 并填入实际值，或设置环境变量。\n"
+                "  cp .env.example .env && nano .env"
+            )
 
         self.client = OpenAI(api_key=self.api_key, base_url=self.base_url)
         self.verbose = verbose

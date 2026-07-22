@@ -306,12 +306,12 @@ python run.py web --port 7860
 
 ### 环境变量
 
-| 变量 | 说明 | 默认值 |
-|---|---|---|
-| `LLM_API_KEY` | LLM API 密钥（必填，支持 OpenAI 兼容接口） | — |
-| `LLM_BASE_URL` | LLM API 地址 | `https://api.deepseek.com` |
-| `LLM_MODEL` | 模型名称 | `deepseek-v4-flash` |
-| `MAZU_INDICATORS_DIR` | 指标数据目录 | `./indicators` |
+| 变量 | 说明 |
+|---|---|
+| `LLM_API_KEY` | LLM API 密钥（必填） |
+| `LLM_BASE_URL` | LLM API 地址（必填） |
+| `LLM_MODEL` | 模型名称（必填） |
+| `MAZU_INDICATORS_DIR` | 指标数据目录（可选，默认 `./indicators`） |
 
 ### 可用命令
 

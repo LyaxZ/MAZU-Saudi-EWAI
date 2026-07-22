@@ -16,8 +16,8 @@ def main():
     # cli: 命令行对话
     cli = sub.add_parser("cli", help="命令行对话模式")
     cli.add_argument("--model", type=str,
-                     default=os.environ.get("LLM_MODEL", "deepseek-v4-flash"),
-                     help="模型名称")
+                     default=os.environ.get("LLM_MODEL", ""),
+                     help="模型名称 (默认读取 LLM_MODEL 环境变量)")
     cli.add_argument("--verbose", action="store_true", help="显示调试信息")
 
     # train: 训练所有模型
