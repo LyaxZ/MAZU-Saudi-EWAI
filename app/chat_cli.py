@@ -58,18 +58,18 @@ def main():
 
     parser = argparse.ArgumentParser(description="MAZU 预警智能体 CLI")
     parser.add_argument("--api-key", help="API Key")
-    parser.add_argument("--model", default=os.environ.get("MAZU_LLM_MODEL", "deepseek-v4-flash"),
+    parser.add_argument("--model", default=os.environ.get("LLM_MODEL", "deepseek-v4-flash"),
                         help="模型名称 (默认: deepseek-v4-flash)")
     parser.add_argument("--verbose", action="store_true", help="显示调试信息")
     args = parser.parse_args()
 
     # 获取 API Key
-    api_key = args.api_key or os.environ.get("DEEPSEEK_API_KEY", "")
+    api_key = args.api_key or os.environ.get("LLM_API_KEY", "")
     if not api_key:
-        print("\n❌ 未设置 DEEPSEEK_API_KEY")
-        print("请通过以下方式之一设置：")
-        print("  1. 在项目根目录创建 .env 文件，写入: DEEPSEEK_API_KEY=sk-xxxxxxxx")
-        print('  2. 环境变量: set DEEPSEEK_API_KEY=sk-xxxxxxxx')
+        print("\n❌ 未设置 LLM_API_KEY")
+        print("  设置方法:")
+        print("  1. 在项目根目录创建 .env 文件，写入: LLM_API_KEY=your-key")
+        print('  2. 环境变量: set LLM_API_KEY=your-key')
         print('  3. 命令行参数: python app/chat_cli.py --api-key sk-xxxxxxxx')
         return
 

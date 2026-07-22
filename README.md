@@ -295,7 +295,7 @@ pip install -e .
 
 # 5. 配置 API Key
 cp .env.example .env
-nano .env  # 填入 DEEPSEEK_API_KEY
+nano .env  # 填入 LLM_API_KEY
 
 # 6. 训练模型（首次运行需要，约 2 分钟）
 python run.py train
@@ -308,10 +308,10 @@ python run.py web --port 7860
 
 | 变量 | 说明 | 默认值 |
 |---|---|---|
-| `DEEPSEEK_API_KEY` | DeepSeek API 密钥（必填） | — |
+| `LLM_API_KEY` | LLM API 密钥（必填，支持 OpenAI 兼容接口） | — |
+| `LLM_BASE_URL` | LLM API 地址 | `https://api.deepseek.com` |
+| `LLM_MODEL` | 模型名称 | `deepseek-v4-flash` |
 | `MAZU_INDICATORS_DIR` | 指标数据目录 | `./indicators` |
-| `MAZU_LLM_MODEL` | 模型名称 | `deepseek-v4-flash` |
-| `MAZU_LLM_BASE_URL` | API 地址 | `https://api.deepseek.com` |
 
 ### 可用命令
 

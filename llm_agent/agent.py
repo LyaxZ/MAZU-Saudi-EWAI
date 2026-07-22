@@ -3,7 +3,7 @@ MAZU Agent — LLM Function Calling 主循环
 
 用法:
     from llm_agent.agent import MazuAgent
-    agent = MazuAgent()  # 自动从 .env 读取 DEEPSEEK_API_KEY
+    agent = MazuAgent()  # 自动从 .env 读取 LLM_API_KEY
     response = agent.chat("2025年8月15日沙特有山洪风险吗？")
 """
 
@@ -75,22 +75,26 @@ class MazuAgent:
     ):
         """
         Args:
-            api_key: API Key（默认从环境变量 DEEPSEEK_API_KEY 读取）
-            model: 模型名称（默认从 MAZU_LLM_MODEL 读取，回退 deepseek-v4-flash）
-            base_url: API 地址（默认从 MAZU_LLM_BASE_URL 读取，回退 DeepSeek 官方）
+            api_key: API Key（默认从环境变量 LLM_API_KEY 读取）
+            model: 模型名称（默认从 LLM_MODEL 读取，回退 deepseek-v4-flash）
+            base_url: API 地址（默认从 LLM_BASE_URL 读取，回退 DeepSeek 官方）
             verbose: 是否打印调试信息
         """
         from openai import OpenAI
 
-        self.api_key = api_key or os.environ.get("DEEPSEEK_API_KEY", "")
+        self.api_key = api_key or os.environ.get("LLM_API_KEY", "")
         if not self.api_key:
-            raise ValueError("请设置 DEEPSEEK_API_KEY 环境变量或传入 api_key 参数")
+            raise ValueError(
+                "未设置 LLM_API_KEY 环境变量。\n"
+                "请复制 .env.example 为 .env 并填入 API Key，或设置环境变量:\n"
+                "  set LLM_API_KEY=your-key    (Windows)\n"
+                "  export LLM_API_KEY=your-key  (Linux/Mac)"
+            )
 
-        self.model = model or os.environ.get("MAZU_LLM_MODEL", "deepseek-v4-flash")
-        self.base_url = base_url or os.environ.get("MAZU_LLM_BASE_URL", "https://api.deepseek.com")
+        self.model = model or os.environ.get("LLM_MODEL", "deepseek-v4-flash")
+        self.base_url = base_url or os.environ.get("LLM_BASE_URL", "https://api.deepseek.com")
 
         self.client = OpenAI(api_key=self.api_key, base_url=self.base_url)
-        self.model = model
         self.verbose = verbose
 
         # 初始化工具实例
