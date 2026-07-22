@@ -12,53 +12,58 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(me
 log = logging.getLogger("MAZU")
 
 CSS = """
-*{box-sizing:border-box}
-body{background:#f0f2f5!important;font-family:'Segoe UI',system-ui,-apple-system,sans-serif}
-.gradio-container{max-width:90vw!important;margin:20px auto!important;padding:0 12px!important;
-  border:none!important;box-shadow:none!important}
+body{background:linear-gradient(135deg,#e8eaf6 0%,#e3f2fd 50%,#f3e5f5 100%)!important;
+  font-family:'Segoe UI',system-ui,-apple-system,sans-serif;min-height:100vh}
+.gradio-container{max-width:90vw!important;margin:16px auto!important;padding:0!important;
+  border:none!important;box-shadow:none!important;background:transparent!important}
 
 /* 顶部标题 */
-.main-header{text-align:center;padding:28px 24px 20px;margin-bottom:12px;
-  background:#fff;border-radius:14px;box-shadow:0 1px 3px rgba(0,0,0,.05)}
-.main-header h1{font-size:22px;margin:0;color:#1a1a2e;font-weight:700}
-.main-header p{font-size:13px;color:#6b7280;margin:6px 0 0}
+.main-header{text-align:center;padding:24px 28px 18px;margin-bottom:10px;
+  background:#fff;border-radius:12px;box-shadow:0 2px 8px rgba(0,0,0,.04);
+  border-left:4px solid #7c3aed}
+.main-header h1{font-size:22px;margin:0;color:#4c1d95;font-weight:700}
+.main-header p{font-size:13px;color:#7c3aed;margin:4px 0 0;opacity:.8}
 
 /* 对话框 */
-#chatbot{border-radius:14px!important;min-height:500px;background:#fff!important;
-  box-shadow:0 1px 3px rgba(0,0,0,.05);border:none!important}
-#chatbot > div{padding:20px!important}
+#chatbot{border-radius:12px!important;min-height:500px;background:#fff!important;
+  box-shadow:0 2px 8px rgba(0,0,0,.04)!important;border:none!important}
+#chatbot > div{padding:18px!important}
 
 /* 输入区 */
-.input-box{background:#fff;border-top:1px solid #f0f0f0;padding:14px 20px;
-  border-radius:0 0 14px 14px;box-shadow:0 1px 3px rgba(0,0,0,.05)}
+.input-box{background:#fff;border-top:1px solid #ede9fe;padding:12px 18px;
+  border-radius:0 0 12px 12px;box-shadow:0 2px 8px rgba(0,0,0,.04)}
 .input-box textarea, .input-box input{
-  border:1px solid #e5e7eb!important;border-radius:10px!important;
-  padding:12px 16px!important;font-size:14px!important;line-height:1.5!important;
-  transition:all .2s;outline:none!important;box-shadow:none!important;
-  background:#fafbfc!important}
+  border:1.5px solid #ddd6fe!important;border-radius:10px!important;
+  padding:12px 16px!important;font-size:14px!important;
+  outline:none!important;box-shadow:none!important;background:#faf5ff!important}
 .input-box textarea:focus, .input-box input:focus{
-  border-color:#6366f1!important;background:#fff!important;
-  box-shadow:0 0 0 3px rgba(99,102,241,.08)!important}
+  border-color:#7c3aed!important;background:#fff!important;
+  box-shadow:0 0 0 3px rgba(124,58,237,.1)!important}
 
 /* 按钮 */
 .send-btn, button.primary{
-  background:#6366f1!important;color:#fff!important;font-weight:600!important;
-  padding:12px 28px!important;border-radius:10px!important;border:none!important;
-  box-shadow:none!important;cursor:pointer!important;transition:all .15s}
+  background:linear-gradient(135deg,#7c3aed,#6d28d9)!important;color:#fff!important;
+  font-weight:600!important;padding:12px 28px!important;border-radius:10px!important;
+  border:none!important;box-shadow:0 2px 8px rgba(124,58,237,.2)!important;
+  cursor:pointer!important;transition:all .15s}
 .send-btn:hover, button.primary:hover{
-  background:#4f46e5!important;box-shadow:0 2px 6px rgba(99,102,241,.25)!important}
+  background:linear-gradient(135deg,#6d28d9,#5b21b6)!important;
+  box-shadow:0 4px 12px rgba(124,58,237,.3)!important;transform:translateY(-1px)}
 
-/* 示例标签 */
-.gr-examples label{color:#6b7280!important;font-size:12px!important}
+/* 示例 */
+.gr-examples label{color:#7c3aed!important;font-size:12px!important;font-weight:600!important}
+.gr-examples .example{border-color:#ddd6fe!important;background:#faf5ff!important;
+  color:#4c1d95!important;border-radius:8px!important}
+.gr-examples .example:hover{background:#ede9fe!important;border-color:#7c3aed!important}
 
 /* 来源引用 */
-.source-cite{font-size:11px;color:#9ca3af;margin-top:8px;padding-top:6px;border-top:1px solid #f0f0f0}
+.source-cite{font-size:11px;color:#a78bfa;margin-top:8px;padding-top:6px;border-top:1px solid #ede9fe}
 """
 
 
 # === UI ===
 def build_ui():
-    with gr.Blocks(title="MAZU 沙特多灾种预警智能体") as app:
+    with gr.Blocks(title="MAZU 沙特多灾种预警智能体", css=CSS) as app:
         gr.HTML("""<div class="main-header">
             <h1>MAZU 沙特多灾种预警智能体</h1>
             <p>暴雨山洪 · 极端高温 · 沙尘强风 · 沿海风浪 ｜ LightGBM · 知识图谱 · LLM Agent</p>
@@ -144,7 +149,7 @@ def launch_app(share=False, **kw):
     kw.setdefault("server_port", 7860)
     log.info("MAZU Web 启动")
     app = build_ui()
-    app.launch(share=share, css=CSS, **kw)
+    app.launch(share=share, **kw)
 
 
 def main():
