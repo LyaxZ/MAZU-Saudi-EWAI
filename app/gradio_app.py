@@ -55,10 +55,6 @@ body{background:#f0f2f5!important;font-family:'Segoe UI',system-ui,-apple-system
 .source-cite{font-size:11px;color:#9ca3af;margin-top:8px;padding-top:6px;border-top:1px solid #f0f0f0}
 """
 
-/* 来源引用 */
-.source-cite{font-size:11px;color:#94a3b8;margin-top:8px;padding-top:6px;border-top:1px solid #f1f5f9}
-"""
-
 
 # === UI ===
 def build_ui():
