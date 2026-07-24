@@ -1,0 +1,44 @@
+# ============================================
+# MAZU 沙特多灾种预警智能体 — Docker Compose
+# ============================================
+
+version: "3.8"
+
+services:
+  mazu:
+    build: .
+    container_name: mazu-saudi-ewai
+    ports:
+      - "${MAZU_PORT:-7860}:7860"
+    environment:
+      - LLM_API_KEY=${LLM_API_KEY:?err}
+      - LLM_BASE_URL=${LLM_BASE_URL:-https://api.deepseek.com}
+      - LLM_MODEL=${LLM_MODEL:-deepseek-v4-flash}
+      - MAZU_INDICATORS_DIR=/data/indicators
+      - MAZU_PRODUCTION=1
+      - MAZU_CONCURRENCY=${MAZU_CONCURRENCY:-5}
+      - MAZU_AUTH_USER=${MAZU_AUTH_USER:-}
+      - MAZU_AUTH_PASS=${MAZU_AUTH_PASS:-}
+    volumes:
+      # 数据文件（只读）
+      - ${MAZU_INDICATORS_DIR:-./indicators}:/data/indicators:ro
+      # 模型文件（只读，如需在容器内训练则改为读写）
+      - ./outputs/models:/app/outputs/models:ro
+      # 持久化日志
+      - mazu_logs:/app/outputs/logs
+    restart: unless-stopped
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:7860/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 90s
+
+volumes:
+  mazu_logs:
+    driver: local

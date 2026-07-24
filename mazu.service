@@ -1,0 +1,22 @@
+[Unit]
+Description=MAZU Saudi Multi-Hazard Early Warning AI Agent
+After=network.target
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/root/mazu_saudi_ewai
+Environment="PATH=/root/miniconda3/envs/mazu/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+Environment="MAZU_PRODUCTION=1"
+Environment="MAZU_CONCURRENCY=5"
+EnvironmentFile=-/root/mazu_saudi_ewai/.env
+ExecStart=/root/miniconda3/envs/mazu/bin/python /root/mazu_saudi_ewai/run.py web --port 7860
+Restart=always
+RestartSec=10
+
+# 日志
+StandardOutput=append:/root/mazu_saudi_ewai/outputs/logs/mazu_stdout.log
+StandardError=append:/root/mazu_saudi_ewai/outputs/logs/mazu_stderr.log
+
+[Install]
+WantedBy=multi-user.target

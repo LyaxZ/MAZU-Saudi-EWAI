@@ -10,8 +10,10 @@ def main():
 
     # web: 启动 Gradio Web 界面
     web = sub.add_parser("web", help="启动 Gradio Web 对话界面")
-    web.add_argument("--port", type=int, default=7860, help="服务端口 (默认: 7860)")
+    web.add_argument("--port", type=int, default=7866, help="服务端口 (默认: 7866)")
     web.add_argument("--share", action="store_true", help="生成公网分享链接")
+    web.add_argument("--concurrency", type=int, default=None,
+                     help="并发处理数 (默认: 5, 可通过 MAZU_CONCURRENCY 环境变量设置)")
 
     # cli: 命令行对话
     cli = sub.add_parser("cli", help="命令行对话模式")
@@ -36,6 +38,8 @@ def main():
 
     if args.command == "web":
         from app.gradio_app import launch_app
+        if args.concurrency is not None:
+            os.environ["MAZU_CONCURRENCY"] = str(args.concurrency)
         launch_app(share=args.share, server_port=args.port)
 
     elif args.command == "cli":
