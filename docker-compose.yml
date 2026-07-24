@@ -9,7 +9,7 @@ services:
     build: .
     container_name: mazu-saudi-ewai
     ports:
-      - "${MAZU_PORT:-7860}:7860"
+      - "${MAZU_PORT:-7866}:7866"
     environment:
       - LLM_API_KEY=${LLM_API_KEY:?err}
       - LLM_BASE_URL=${LLM_BASE_URL:-https://api.deepseek.com}
