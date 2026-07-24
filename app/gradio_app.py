@@ -29,30 +29,91 @@ THEME = gr.themes.Ocean(
 LANG_SWITCH_JS = """
 <script>
 function mazuSwitchLang(lang) {
-    var map = {
+    var tabMap = {
         zh: ['智能对话','知识图谱','历史事件','系统'],
         en: ['Smart Chat','Knowledge Graph','Historical Events','System'],
         ar: ['المحادثة الذكية','الرسم البياني المعرفي','الأحداث التاريخية','النظام']
     };
-    var labels = map[lang];
+    var labels = tabMap[lang];
     if (!labels) return;
     var container = document.getElementById('mazu-tabs');
     if (!container) return;
+    // 更新 tab 按钮
     var buttons = container.querySelectorAll('button');
     var idx = 0;
     buttons.forEach(function(btn) {
         if (idx < 4 && btn.textContent.trim().length < 40) {
-            btn.textContent = labels[idx];
-            idx++;
+            btn.textContent = labels[idx]; idx++;
         }
     });
-    // 更新侧边栏标题
-    var sidebarLabels = {zh:'对话记录', en:'Conversations', ar:'المحادثات'};
+    // 更新 tablist 标签
+    var tabs = container.querySelectorAll('[role="tab"]');
+    idx = 0;
+    tabs.forEach(function(tab) {
+        if (idx < 4) { tab.textContent = labels[idx]; idx++; }
+    });
+    // 侧边栏标题
     var sh = document.getElementById('sidebar-header');
-    if (sh) sh.textContent = sidebarLabels[lang] || sidebarLabels['zh'];
+    if (sh) sh.textContent = {zh:'对话记录', en:'Conversations', ar:'المحادثات'}[lang] || '对话记录';
+    // 侧边栏默认标题
+    setTimeout(function() {
+        var ncMap = {zh:'新对话', en:'New Chat', ar:'محادثة جديدة'};
+        var ncText = ncMap[lang] || '新对话';
+        var walker = document.createTreeWalker(document.getElementById('sidebar-col') || document.body, NodeFilter.SHOW_TEXT);
+        while (walker.nextNode()) {
+            var n = walker.currentNode;
+            if (n.textContent.trim() === '新对话' || n.textContent.trim() === 'New Chat' || n.textContent.trim() === 'محادثة جديدة') {
+                n.textContent = ncText;
+            }
+        }
+    }, 200);
+    // RTL
+    var isRtl = (lang === 'ar');
+    document.documentElement.dir = isRtl ? 'rtl' : 'ltr';
+    document.body.classList.toggle('rtl-mode', isRtl);
+    // 下拉三角位置
+    var dd = document.getElementById('lang-dd');
+    if (dd) {
+        var arrow = dd.querySelector('svg, img, [class*=\"arrow\"], [class*=\"icon\"]');
+        if (arrow) { arrow.style.left = isRtl ? '6px' : ''; arrow.style.right = isRtl ? '' : '6px'; }
+    }
+    // 浏览器标签标题
+    var titles = {zh:'MAZU 沙特多灾种预警智能体', en:'MAZU Saudi Multi-Hazard Early Warning Agent', ar:'MAZU وكيل الإنذار المبكر للكوارث'};
+    document.title = titles[lang] || titles['en'];
+    // Gradio 底部栏 + 设置弹窗
+    setTimeout(function() {
+        var txtMap = {
+            zh: {'通过 API 使用':'通过 API 使用','使用 Gradio 构建':'使用 Gradio 构建','设置':'设置','Settings':'设置','Built with Gradio':'使用 Gradio 构建','Use via API':'通过 API 使用'},
+            en: {'通过 API 使用':'Use via API','使用 Gradio 构建':'Built with Gradio','设置':'Settings','Settings':'Settings','Built with Gradio':'Built with Gradio','Use via API':'Use via API'},
+            ar: {'通过 API 使用':'استخدام عبر API','使用 Gradio 构建':'مبني بـ Gradio','设置':'إعدادات','Settings':'إعدادات','Built with Gradio':'مبني بـ Gradio','Use via API':'استخدام عبر API'}
+        };
+        var map = txtMap[lang] || txtMap['zh'];
+        document.querySelectorAll('a, button, span, h2, h3, label').forEach(function(el) {
+            var t = el.textContent.trim();
+            if (map[t] && map[t] !== t) el.textContent = map[t];
+        });
+    }, 300);
 }
 </script>
 """
+
+
+def _build_examples_html(lang):
+    """生成可点击的示例问题 HTML"""
+    items = []
+    for ex in CHAT_EXAMPLES[lang]:
+        escaped = _html.escape(ex)
+        items.append(
+            f'<span onclick="var t=document.querySelector(\'#msg-box textarea\');'
+            f't.value=this.textContent;t.dispatchEvent(new Event(\'input\',{{bubbles:true}}))"'
+            f'style="display:inline-block;padding:6px 14px;margin:3px 6px 3px 0;'
+            f'background:#f1f5f9;border:1px solid #e2e8f0;border-radius:16px;'
+            f'font-size:13px;color:#475569;cursor:pointer;transition:all .15s"'
+            f'onmouseover="this.style.background=\'#e2e8f0\'"'
+            f'onmouseout="this.style.background=\'#f1f5f9\'"'
+            f'>{escaped}</span>'
+        )
+    return f'<div style="line-height:2">{"".join(items)}</div>'
 
 
 def build_ui():
@@ -66,7 +127,8 @@ def build_ui():
             header_html = gr.HTML(build_header("zh"))
             lang_dd = gr.Dropdown(
                 choices=[("中文", "zh"), ("English", "en"), ("العربية", "ar")],
-                value="zh", label="🌐", scale=0, min_width=110, interactive=True,
+                value="zh", show_label=False, interactive=True, elem_id="lang-dd",
+                scale=0, min_width=145,
             )
 
         with gr.Tabs(selected=0, elem_id="mazu-tabs") as tabs_ref:
@@ -78,6 +140,17 @@ def build_ui():
 #sidebar-col > .wrap { height: 100% !important; display: flex !important; flex-direction: column !important; }
 #sidebar-col > .wrap > :first-child { flex: 1 !important; min-height: 0 !important; }
 #send-btn { padding: 0 18px !important; font-size: 14px !important; }
+#lang-dd input { caret-color: transparent !important; cursor: pointer !important; }
+#lang-dd { margin-top: 6px !important; }
+#lang-dd svg { right: 6px !important; }
+.rtl-mode, .rtl-mode .block, .rtl-mode .prose, .rtl-mode .wrap,
+.rtl-mode textarea, .rtl-mode input, .rtl-mode p, .rtl-mode span,
+.rtl-mode h1, .rtl-mode h2, .rtl-mode h3, .rtl-mode label,
+.rtl-mode button, .rtl-mode .chatbot, .rtl-mode [class*=\"message\"],
+.rtl-mode .svelte-vt1mxs, .rtl-mode .md, .rtl-mode .markdown {
+    direction: rtl !important; text-align: right !important;
+}
+.rtl-mode #lang-dd svg { right: auto !important; left: 6px !important; }
 </style>""")
                 agent_ref = [None]; agent_err = [""]
 
@@ -121,7 +194,8 @@ def build_ui():
                             send_btn = gr.Button(T["zh"]["send"], variant="primary",
                                 scale=0, min_width=64, elem_id="send-btn")
 
-                examples_ref = gr.Examples(examples=CHAT_EXAMPLES["zh"], inputs=msg, label=T["zh"]["examples_label"])
+                examples_label = gr.Markdown(f"**{T['zh']['examples_label']}**", elem_id="examples-label")
+                examples_html = gr.HTML(_build_examples_html("zh"), elem_id="examples-html")
 
                 def respond(message, history, state, lang):
                     history = history or []
@@ -160,12 +234,12 @@ def build_ui():
                     conv["msgs"] = new_hist
                     yield new_hist, "", state
 
-                def _render_sidebar(state):
+                def _render_sidebar(state, lang="zh"):
                     cid = state["active"]
                     items = []
                     for c in reversed(state["convs"]):
                         a_cls = "active" if c["id"] == cid else ""
-                        t = c["title"] or T["zh"]["new_chat_default"]
+                        t = c["title"] or T[lang]["new_chat_default"]
                         bg = ("background:linear-gradient(135deg,rgba(14,116,144,.1),rgba(8,145,178,.08));"
                               "border:1px solid rgba(8,145,178,.2);font-weight:600;color:#0e7490") \
                             if a_cls else "border:1px solid transparent"
@@ -189,7 +263,7 @@ def build_ui():
                     cid = str(uuid.uuid4())[:8]
                     state["convs"].append({"id": cid, "title": T[lang]["new_chat_default"], "time": "", "msgs": []})
                     state["active"] = cid
-                    return [{"role":"assistant","content":T[lang]["welcome"]}], "", state, _render_sidebar(state)
+                    return [{"role":"assistant","content":T[lang]["welcome"]}], "", state, _render_sidebar(state, lang)
 
                 def switch_conversation(cid, state):
                     state["active"] = cid
@@ -197,7 +271,7 @@ def build_ui():
                     msgs = conv["msgs"] if conv else []
                     if not msgs:
                         msgs = [{"role":"assistant","content":T["zh"]["welcome"]}]
-                    return msgs, _render_sidebar(state), state
+                    return msgs, _render_sidebar(state, "zh"), state
 
                 switch_input = gr.Textbox(visible=False, elem_id="switch-input")
                 switch_btn = gr.Button("switch", visible=False, elem_id="switch-btn")
@@ -280,36 +354,40 @@ def build_ui():
                 log_box.value = f"{pyinfo}\n{'='*60}\n{logs}"
 
         # ═══════════════════════════ 语言切换 ═══════════════════════════
-        def on_lang_change(lang):
+        def on_lang_change(lang, state):
+            mt, lt, dt, logs, pyinfo = _sysinfo(lang)
             return [
                 gr.update(value=build_header(lang)),                          # header_html
-                gr.update(value=T[lang]["welcome"]),                          # chatbot
+                gr.update(value=[{"role":"assistant","content":T[lang]["welcome"]}]),  # chatbot
                 gr.update(placeholder=T[lang]["placeholder"]),                 # msg
                 gr.update(value=T[lang]["send"]),                             # send_btn
                 gr.update(value=T[lang]["new_chat_btn"]),                     # new_chat_btn
+                gr.update(value=f"**{T[lang]['examples_label']}**"),          # examples_label
+                gr.update(value=_build_examples_html(lang)),                  # examples_html
                 gr.update(value=f'<iframe src="about:blank" srcdoc="{_html.escape(KG_HTML[lang])}" '
                           f'style="width:100%;height:calc(100vh - 180px);min-height:520px;border:none;border-radius:12px"></iframe>'),  # kg_iframe
                 gr.update(value=T[lang]["kg_hint"]),                          # kg_hint
                 gr.update(value=f'<iframe src="about:blank" srcdoc="{_html.escape(EVENTS_HTML[lang])}" '
                           f'style="width:100%;height:calc(100vh - 160px);min-height:580px;border:none;border-radius:12px"></iframe>'),  # ev_iframe
                 gr.update(value=T[lang]["events_hint"]),                      # ev_hint
-                gr.update(label=T[lang]["model_status"]),                     # model_box
-                gr.update(label=T[lang]["llm_config"]),                       # llm_box
-                gr.update(label=T[lang]["data_label"]),                       # data_box
-                gr.update(label=T[lang]["log_label"]),                        # log_box
+                gr.update(label=T[lang]["model_status"], value=mt),           # model_box
+                gr.update(label=T[lang]["llm_config"], value=lt),             # llm_box
+                gr.update(label=T[lang]["data_label"], value=dt),             # data_box
+                gr.update(label=T[lang]["log_label"], value=f"{pyinfo}\n{'='*60}\n{logs}"),  # log_box
                 gr.update(value=T[lang]["refresh"]),                          # refresh_btn
                 lang,                                                          # lang_state
             ]
 
         lang_dd.change(
-            fn=on_lang_change, inputs=[lang_dd],
+            fn=on_lang_change, inputs=[lang_dd, conv_state],
             outputs=[
                 header_html, chatbot, msg, send_btn, new_chat_btn,
+                examples_label, examples_html,
                 kg_iframe, kg_hint, ev_iframe, ev_hint,
                 model_box, llm_box, data_box, log_box, refresh_btn,
                 lang_state,
             ],
-            js="(lang) => { if (typeof mazuSwitchLang === 'function') mazuSwitchLang(lang); return lang; }"
+            js="function(lang) { if (typeof mazuSwitchLang === 'function') mazuSwitchLang(lang); return [lang]; }"
         )
 
     return app
